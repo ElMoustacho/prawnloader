@@ -1,5 +1,1 @@
-<script lang="ts">
-	import Greet from '$lib/Greet.svelte';
-</script>
-
-<Greet />
+<h1 class="title">Downloads</h1>

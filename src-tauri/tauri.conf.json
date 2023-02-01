@@ -20,7 +20,7 @@
 		},
 		"bundle": {
 			"active": true,
-			"category": "DeveloperTool",
+			"category": "Music",
 			"copyright": "",
 			"deb": {
 				"depends": []
@@ -33,7 +33,7 @@
 				"icons/icon.icns",
 				"icons/icon.ico"
 			],
-			"identifier": "com.tauri.dev",
+			"identifier": "fr.elmoustacho",
 			"longDescription": "",
 			"macOS": {
 				"entitlements": null,
