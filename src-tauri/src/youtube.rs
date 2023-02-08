@@ -1,27 +1,17 @@
-use crate::downloader::DownloadableSong;
-use crate::music::Album;
-use crate::music::Song;
-use crate::parser::Parser;
+use crate::parser::{Parser, ParserResult};
+use crate::{
+    downloader::DownloadableSong,
+    music::{Album, Song},
+};
 
 pub(crate) struct YoutubeParser {}
 
 impl Parser for YoutubeParser {
-    fn parse_url(&self, url: &String) -> Option<Box<dyn DownloadableSong>> {
-        if let Ok(id) = rustube::Id::from_raw(url) {
-            let id = id.as_owned();
-            let song = create_song_from_id(&id);
-
-            if let Err(_) = song {
-                return None;
-            }
-
-            return Some(Box::new(YoutubeDownloadable {
-                song: song.unwrap(),
-                id,
-            }));
+    fn parse_url(&self, url: &String) -> ParserResult {
+        match parse_video(url) {
+            Err(_) => parse_playlist(url),
+            result => result,
         }
-
-        None
     }
 }
 
@@ -32,10 +22,7 @@ pub(crate) struct YoutubeDownloadable {
 
 impl DownloadableSong for YoutubeDownloadable {
     fn download(&self, dest_folder: &std::path::Path) -> Result<Box<std::path::Path>, ()> {
-        let path =
-            rustube::blocking::download_worst_quality(&self.id.watch_url().to_string()).unwrap();
-
-        Ok(Box::from(path))
+        todo!()
     }
 
     fn get_song(&self) -> &Song {
@@ -44,16 +31,43 @@ impl DownloadableSong for YoutubeDownloadable {
 }
 
 fn create_song_from_id(id: &rustube::Id) -> Result<Song, rustube::Error> {
+    let video_details = rustube::blocking::Video::from_id(id.as_owned())?.video_details();
+
     let album = Album {
-        name: "ok".to_string(),
-        artist: "author".to_string(),
+        name: "album".to_string(),
+        artist: video_details.author.to_string(),
         year: None,
         cover: None,
     };
 
     Ok(Song {
-        title: "title".to_string(),
+        title: video_details.title.to_string(),
         track: None,
         album,
     })
+}
+
+fn parse_video(url: &String) -> ParserResult {
+    let id = rustube::Id::from_raw(url);
+
+    if let Err(_) = id {
+        return Err(());
+    }
+
+    let id = id.unwrap().as_owned();
+    let song = create_song_from_id(&id);
+
+    if let Err(_) = song {
+        return Err(());
+    }
+
+    return Ok(vec![Box::new(YoutubeDownloadable {
+        song: song.unwrap(),
+        id,
+    })]);
+}
+
+// TODO: Implement playlist parsing
+fn parse_playlist(url: &String) -> ParserResult {
+    Err(())
 }

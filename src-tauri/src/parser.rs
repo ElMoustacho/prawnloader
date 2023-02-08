@@ -5,18 +5,27 @@ use std::sync::Mutex;
 pub(crate) static PARSERS: Lazy<Mutex<Vec<Box<dyn Parser>>>> =
     Lazy::new(|| Mutex::new(vec![Box::new(YoutubeParser {})]));
 
+pub type ParserResult = Result<Vec<Box<dyn DownloadableSong>>, ()>;
+
 pub trait Parser: Send {
-    fn parse_url(&self, url: &String) -> Option<Box<dyn DownloadableSong>>;
+    fn parse_url(&self, url: &String) -> ParserResult;
 }
 
-pub(crate) fn parse_url(url: &String) -> Option<Box<dyn DownloadableSong>> {
+/**
+Parses an url and returns a result containing a vector of `DownloadableSong`
+if it matches with a parser.
+
+# Errors
+This function will return an error if the url passed doesn't match with any parser.
+*/
+pub(crate) fn parse_url(url: &String) -> ParserResult {
     for parser in PARSERS.lock().unwrap().iter() {
-        if let Some(downloadable) = parser.parse_url(&url) {
-            return Some(downloadable);
+        if let Ok(downloadable_list) = parser.parse_url(&url) {
+            return Ok(downloadable_list);
         }
     }
 
-    None
+    Err(())
 }
 
 pub fn add_parser(parser: Box<dyn Parser>) -> Result<(), ()> {
