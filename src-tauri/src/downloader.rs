@@ -1,7 +1,7 @@
 use crate::{music::Song, parser::parse_url};
 use std::path::Path;
 
-pub trait DownloadableSong {
+pub trait DownloadableSong: Send {
     fn download(&self, dest_folder: &Path) -> Result<Box<Path>, ()>;
     fn get_song(&self) -> &Song;
 }
