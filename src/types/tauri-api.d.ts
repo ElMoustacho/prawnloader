@@ -3,7 +3,7 @@
  * It is used to enforce type definitions to commands through a `Commands`
  * interface which can be extended.
  */
-module '@tauri-apps/api/tauri' {
+module '@tauri-apps/api' {
 	/**
 	 * Invoke your custom commands.
 	 *

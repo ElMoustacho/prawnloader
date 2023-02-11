@@ -1,24 +1,43 @@
 use crate::{music::Song, parser::parse_url};
 use std::path::Path;
 
+type Queue = Vec<Box<dyn DownloadableSong>>;
+
+#[derive(PartialEq)]
+pub enum Event {
+    AddToQueue,
+    RemoveFromQueue,
+}
+
 pub trait DownloadableSong: Send {
     fn download(&self, dest_folder: &Path) -> Result<Box<Path>, ()>;
     fn get_song(&self) -> &Song;
 }
 
+struct EventListener {
+    event: Event,
+    callback: Box<dyn Fn() -> () + Send>,
+}
+
 pub struct Downloader {
-    queue: Vec<Box<dyn DownloadableSong>>,
+    queue: Queue,
+    event_listeners: Vec<EventListener>,
 }
 
 impl Downloader {
     pub fn new() -> Downloader {
-        Downloader { queue: vec![] }
+        Downloader {
+            queue: Vec::new(),
+            event_listeners: Vec::new(),
+        }
     }
 
     pub fn add_to_queue(&mut self, url: impl Into<String>) -> Result<(), ()> {
         let mut downloadables = parse_url(&url.into())?;
 
         self.queue.append(&mut downloadables);
+
+        self.emit_event(Event::AddToQueue);
 
         Ok(())
     }
@@ -30,7 +49,13 @@ impl Downloader {
 
         self.queue.remove(index);
 
+        self.emit_event(Event::RemoveFromQueue);
+
         Ok(())
+    }
+
+    pub fn get_queue(&self) -> &Queue {
+        self.queue.as_ref()
     }
 
     pub fn download(&self, index: usize, dest_folder: &Path) -> Result<Box<Path>, ()> {
@@ -39,5 +64,23 @@ impl Downloader {
         }
 
         Err(())
+    }
+
+    pub fn on<F>(&mut self, event: Event, callback: F)
+    where
+        F: Fn() -> () + Send + 'static,
+    {
+        self.event_listeners.push(EventListener {
+            event,
+            callback: Box::new(callback),
+        });
+    }
+
+    fn emit_event(&self, event: Event) {
+        self.event_listeners.iter().for_each(|listener| {
+            if listener.event == event {
+                (listener.callback)();
+            }
+        })
     }
 }

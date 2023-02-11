@@ -3,28 +3,57 @@
     windows_subsystem = "windows"
 )]
 
-use prawnloader::downloader;
-use std::sync::{Arc, Mutex};
-use tauri::State;
+use prawnloader::downloader::{self, Event};
+use std::sync::Arc;
+use tauri::{Manager, State};
+use tokio::sync::Mutex;
 
 struct AppState {
     downloader: Arc<Mutex<downloader::Downloader>>,
 }
 
 #[tauri::command]
-async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), ()> {
-    state.downloader.lock().unwrap().add_to_queue(url)
+async fn add_to_queue(
+    url: String,
+    state: State<'_, AppState>,
+    // app_handle: tauri::AppHandle,
+) -> Result<(), ()> {
+    let result = state.downloader.lock().await.add_to_queue(url);
+
+    result
 }
 
 #[tauri::command]
-async fn remove_from_queue(id: usize, state: State<'_, AppState>) -> Result<(), ()> {
-    state.downloader.lock().unwrap().remove_from_queue(id)
+async fn remove_from_queue(
+    id: usize,
+    state: State<'_, AppState>,
+    // app_handle: tauri::AppHandle,
+) -> Result<(), ()> {
+    let result = state.downloader.lock().await.remove_from_queue(id);
+
+    result
 }
 
 fn main() {
     tauri::Builder::default()
-        .manage(AppState {
-            downloader: Arc::new(Mutex::new(downloader::Downloader::new())),
+        .setup(|app| {
+            let mut downloader = downloader::Downloader::new();
+
+            let handle = app.handle();
+            downloader.on(Event::AddToQueue, move || {
+                handle.emit_all("queue_update", "coucou");
+            });
+
+            let handle = app.handle();
+            downloader.on(Event::RemoveFromQueue, move || {
+                handle.emit_all("queue_update", "coucou");
+            });
+
+            app.manage(AppState {
+                downloader: Arc::new(Mutex::new(downloader)),
+            });
+
+            Ok(())
         })
         .invoke_handler(tauri::generate_handler![add_to_queue, remove_from_queue])
         .run(tauri::generate_context!())
