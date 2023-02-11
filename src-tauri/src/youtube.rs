@@ -21,6 +21,7 @@ pub(crate) struct YoutubeDownloadable {
 }
 
 impl DownloadableSong for YoutubeDownloadable {
+    // TODO: Implement downloading
     fn download(&self, dest_folder: &std::path::Path) -> Result<Box<std::path::Path>, ()> {
         todo!()
     }
@@ -30,8 +31,11 @@ impl DownloadableSong for YoutubeDownloadable {
     }
 }
 
+// FIXME: Remove blocking operation
 fn create_song_from_id(id: &rustube::Id) -> Result<Song, rustube::Error> {
-    let video_details = rustube::blocking::Video::from_id(id.as_owned())?.video_details();
+    let video_details =
+        tokio::task::block_in_place(|| rustube::blocking::Video::from_id(id.as_owned()))?
+            .video_details();
 
     let album = Album {
         name: "album".to_string(),

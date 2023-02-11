@@ -41,12 +41,12 @@ fn main() {
 
             let handle = app.handle();
             downloader.on(Event::AddToQueue, move || {
-                handle.emit_all("queue_update", "coucou");
+                _ = handle.emit_all("queue_update", "coucou");
             });
 
             let handle = app.handle();
             downloader.on(Event::RemoveFromQueue, move || {
-                handle.emit_all("queue_update", "coucou");
+                _ = handle.emit_all("queue_update", "coucou");
             });
 
             app.manage(AppState {

@@ -19,7 +19,9 @@ if it matches with a parser.
 This function will return an error if the url passed doesn't match with any parser.
 */
 pub(crate) fn parse_url(url: &String) -> ParserResult {
-    for parser in PARSERS.lock().unwrap().iter() {
+    let parsers = tokio::task::block_in_place(|| PARSERS.lock().unwrap());
+
+    for parser in parsers.iter() {
         if let Ok(downloadable_list) = parser.parse_url(&url) {
             return Ok(downloadable_list);
         }
@@ -28,16 +30,8 @@ pub(crate) fn parse_url(url: &String) -> ParserResult {
     Err(())
 }
 
-pub fn add_parser(parser: Box<dyn Parser>) -> Result<(), ()> {
-    let mutex = PARSERS.lock();
-
-    match mutex {
-        Ok(mut vec) => {
-            vec.push(parser);
-            Ok(())
-        }
-        Err(_) => Err(()),
-    }
+pub fn add_parser(parser: Box<dyn Parser>) {
+    tokio::task::block_in_place(|| PARSERS.lock().unwrap().push(parser));
 }
 
 #[cfg(test)]
