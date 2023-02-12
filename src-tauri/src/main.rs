@@ -13,22 +13,14 @@ struct AppState {
 }
 
 #[tauri::command]
-async fn add_to_queue(
-    url: String,
-    state: State<'_, AppState>,
-    // app_handle: tauri::AppHandle,
-) -> Result<(), ()> {
+async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), ()> {
     let result = state.downloader.lock().await.add_to_queue(url);
 
     result
 }
 
 #[tauri::command]
-async fn remove_from_queue(
-    id: usize,
-    state: State<'_, AppState>,
-    // app_handle: tauri::AppHandle,
-) -> Result<(), ()> {
+async fn remove_from_queue(id: usize, state: State<'_, AppState>) -> Result<(), ()> {
     let result = state.downloader.lock().await.remove_from_queue(id);
 
     result
@@ -40,13 +32,17 @@ fn main() {
             let mut downloader = downloader::Downloader::new();
 
             let handle = app.handle();
-            downloader.on(Event::AddToQueue, move || {
-                _ = handle.emit_all("queue_update", "coucou");
+            downloader.on(Event::AddToQueue, move |downloader| {
+                handle
+                    .emit_all("queue_update", downloader.get_queue_as_songs())
+                    .expect("Error while emitting event.");
             });
 
             let handle = app.handle();
-            downloader.on(Event::RemoveFromQueue, move || {
-                _ = handle.emit_all("queue_update", "coucou");
+            downloader.on(Event::RemoveFromQueue, move |downloader| {
+                handle
+                    .emit_all("queue_update", downloader.get_queue_as_songs())
+                    .expect("Error while emitting event.");
             });
 
             app.manage(AppState {
@@ -69,12 +65,15 @@ mod tests {
         let mut downloader = downloader::Downloader::new();
 
         let urls = [
+            // Deezer
             "https://www.deezer.com/fr/track/597403742",
             "https://deezer.page.link/mZsk7WU6P4r4h3nA8",
             "https://www.deezer.com/fr/album/345755977",
             "https://www.deezer.com/fr/playlist/10575085742",
+            // YouTube Music
             "https://music.youtube.com/watch?v=gAy5WZo9kts",
             "https://music.youtube.com/playlist?list=OLAK5uy_nSewatBUjTf3IO_DIqqMXn3ps_WbEAyi4",
+            // YouTube
             "https://www.youtube.com/watch?v=ORofRTMg-iY",
             "https://www.youtube.com/playlist?list=PLevurNKwl9HEcxa6K3dUoQ1jSBUUC2UxI",
         ];

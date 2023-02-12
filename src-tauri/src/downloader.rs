@@ -16,7 +16,7 @@ pub trait DownloadableSong: Send {
 
 struct EventListener {
     event: Event,
-    callback: Box<dyn Fn() -> () + Send>,
+    callback: Box<dyn Fn(&Downloader) -> () + Send>,
 }
 
 pub struct Downloader {
@@ -58,6 +58,16 @@ impl Downloader {
         self.queue.as_ref()
     }
 
+    pub fn get_queue_as_songs(&self) -> Vec<Song> {
+        let mut result = Vec::new();
+
+        for downloadable in self.queue.iter() {
+            result.push(downloadable.get_song().to_owned());
+        }
+
+        result
+    }
+
     pub fn download(&self, index: usize, dest_folder: &Path) -> Result<Box<Path>, ()> {
         if let Some(downloadable) = self.queue.get(index) {
             return downloadable.download(dest_folder);
@@ -68,7 +78,7 @@ impl Downloader {
 
     pub fn on<F>(&mut self, event: Event, callback: F)
     where
-        F: Fn() -> () + Send + 'static,
+        F: Fn(&Downloader) -> () + Send + 'static,
     {
         self.event_listeners.push(EventListener {
             event,
@@ -79,7 +89,7 @@ impl Downloader {
     fn emit_event(&self, event: Event) {
         self.event_listeners.iter().for_each(|listener| {
             if listener.event == event {
-                (listener.callback)();
+                (listener.callback)(&self);
             }
         })
     }

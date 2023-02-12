@@ -3,16 +3,42 @@
 	import { listen } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
 
-	onMount(() => listen('queue_update', (e) => console.info('Update: ', e)));
+	let url = 'https://www.youtube.com/watch?v=rmI3TpefQpk';
+	let downloads: any[] = [];
+
+	onMount(() =>
+		listen<any[]>('queue_update', (e) => {
+			console.info('Got ', e.payload);
+			downloads = e.payload;
+		})
+	);
+
+	async function download() {
+		try {
+			await invoke('add_to_queue', { url });
+		} catch (error) {
+			console.warn('mauvais url, tu pues.');
+		}
+	}
 </script>
 
 <h1 class="title">Downloads</h1>
 
-<button
-	on:click={() =>
-		invoke('add_to_queue', {
-			url: 'https://www.youtube.com/watch?v=rmI3TpefQpk',
-		})}
->
-	Add to queue
-</button>
+<div class="columns">
+	<div class="column">
+		<input type="text" bind:value={url} />
+		<button on:click={() => download()}> Add to queue </button>
+	</div>
+	<div class="column">
+		<h1>Queue of downloads</h1>
+		<div>
+			{#each downloads as download}
+				<p>
+					{download.title}<br /><small>{download.album.name}</small>
+				</p>
+			{:else}
+				<h2>No downloads :(</h2>
+			{/each}
+		</div>
+	</div>
+</div>

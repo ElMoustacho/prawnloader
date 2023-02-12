@@ -1,6 +1,6 @@
 use crate::{downloader::DownloadableSong, youtube::YoutubeParser};
 use once_cell::sync::Lazy;
-use std::sync::Mutex;
+use tokio::sync::Mutex;
 
 pub(crate) static PARSERS: Lazy<Mutex<Vec<Box<dyn Parser>>>> =
     Lazy::new(|| Mutex::new(vec![Box::new(YoutubeParser {})]));
@@ -19,7 +19,7 @@ if it matches with a parser.
 This function will return an error if the url passed doesn't match with any parser.
 */
 pub(crate) fn parse_url(url: &String) -> ParserResult {
-    let parsers = tokio::task::block_in_place(|| PARSERS.lock().unwrap());
+    let parsers = tokio::task::block_in_place(|| PARSERS.blocking_lock());
 
     for parser in parsers.iter() {
         if let Ok(downloadable_list) = parser.parse_url(&url) {
@@ -31,7 +31,7 @@ pub(crate) fn parse_url(url: &String) -> ParserResult {
 }
 
 pub fn add_parser(parser: Box<dyn Parser>) {
-    tokio::task::block_in_place(|| PARSERS.lock().unwrap().push(parser));
+    tokio::task::block_in_place(|| PARSERS.blocking_lock().push(parser));
 }
 
 #[cfg(test)]
