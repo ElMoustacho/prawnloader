@@ -2223,7 +2223,6 @@ version = "0.0.0"
 dependencies = [
  "async-trait",
  "deezer_downloader",
- "once_cell",
  "regex",
  "reqwest",
  "rustube",

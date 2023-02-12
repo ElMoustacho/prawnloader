@@ -1,4 +1,4 @@
-use crate::{music::Song, parser::parse_url};
+use crate::{music::Song, parser::Parser};
 use std::path::Path;
 
 type Queue = Vec<Box<dyn DownloadableSong>>;
@@ -20,6 +20,7 @@ struct EventListener {
 }
 
 pub struct Downloader {
+    pub parser: Parser,
     queue: Queue,
     event_listeners: Vec<EventListener>,
 }
@@ -29,11 +30,12 @@ impl Downloader {
         Downloader {
             queue: Vec::new(),
             event_listeners: Vec::new(),
+            parser: Parser::new(),
         }
     }
 
     pub fn add_to_queue(&mut self, url: impl Into<String>) -> Result<(), ()> {
-        let mut downloadables = parse_url(&url.into())?;
+        let mut downloadables = self.parser.parse_url(&url.into())?;
 
         self.queue.append(&mut downloadables);
 

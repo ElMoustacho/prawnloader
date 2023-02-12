@@ -1,4 +1,4 @@
-use crate::parser::{Parser, ParserResult};
+use crate::parser::{ParserResult, SongParser};
 use crate::{
     downloader::DownloadableSong,
     music::{Album, Song},
@@ -6,7 +6,7 @@ use crate::{
 
 pub(crate) struct YoutubeParser {}
 
-impl Parser for YoutubeParser {
+impl SongParser for YoutubeParser {
     fn parse_url(&self, url: &String) -> ParserResult {
         match parse_video(url) {
             Err(_) => parse_playlist(url),
