@@ -1,4 +1,5 @@
 use crate::{music::Song, parser::Parser};
+use async_trait::async_trait;
 use std::path::Path;
 
 type Queue = Vec<Box<dyn DownloadableSong>>;
@@ -9,8 +10,9 @@ pub enum Event {
     RemoveFromQueue,
 }
 
+#[async_trait]
 pub trait DownloadableSong: Send {
-    fn download(&self, dest_folder: &Path) -> Result<Box<Path>, ()>;
+    async fn download(&self, dest_folder: &Path) -> Result<Box<Path>, ()>;
     fn get_song(&self) -> &Song;
 }
 
@@ -70,9 +72,9 @@ impl Downloader {
         result
     }
 
-    pub fn download(&self, index: usize, dest_folder: &Path) -> Result<Box<Path>, ()> {
+    pub async fn download(&self, index: usize, dest_folder: &Path) -> Result<Box<Path>, ()> {
         if let Some(downloadable) = self.queue.get(index) {
-            return downloadable.download(dest_folder);
+            return downloadable.download(dest_folder).await;
         }
 
         Err(())

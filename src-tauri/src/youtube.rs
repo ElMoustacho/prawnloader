@@ -3,6 +3,7 @@ use crate::{
     downloader::DownloadableSong,
     music::{Album, Song},
 };
+use async_trait::async_trait;
 
 pub(crate) struct YoutubeParser {}
 
@@ -20,9 +21,10 @@ pub(crate) struct YoutubeDownloadable {
     id: rustube::IdBuf,
 }
 
+#[async_trait]
 impl DownloadableSong for YoutubeDownloadable {
     // TODO: Implement downloading
-    fn download(&self, dest_folder: &std::path::Path) -> Result<Box<std::path::Path>, ()> {
+    async fn download(&self, dest_folder: &std::path::Path) -> Result<Box<std::path::Path>, ()> {
         todo!()
     }
 
@@ -61,17 +63,54 @@ fn parse_video(url: &String) -> ParserResult {
     let id = id.unwrap().as_owned();
     let song = create_song_from_id(&id);
 
-    if let Err(_) = song {
-        return Err(());
+    match song {
+        Err(_) => Err(()),
+        Ok(_) => Ok(vec![Box::new(YoutubeDownloadable {
+            song: song.unwrap(),
+            id,
+        })]),
     }
-
-    return Ok(vec![Box::new(YoutubeDownloadable {
-        song: song.unwrap(),
-        id,
-    })]);
 }
 
 // TODO: Implement playlist parsing
 fn parse_playlist(url: &String) -> ParserResult {
     Err(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::parser::Parser;
+
+    #[tokio::test]
+    async fn video_parse() {
+        let parser = Parser::from(vec![Box::new(YoutubeParser {})]);
+
+        parser
+            .parse_url(&String::from("https://www.youtube.com/watch?v=ORofRTMg-iY"))
+            .expect("Url should be parsable to a YT video.");
+
+        parser
+            .parse_url(&String::from(
+                "https://music.youtube.com/watch?v=gAy5WZo9kts",
+            ))
+            .expect("Url should be parsable to a YT music song.");
+    }
+
+    #[tokio::test]
+    async fn playlist_parse() {
+        let parser = Parser::new();
+
+        parser
+            .parse_url(&String::from(
+                "https://www.youtube.com/playlist?list=PLevurNKwl9HEcxa6K3dUoQ1jSBUUC2UxI",
+            ))
+            .expect("Url should be parsable to a YT playlist.");
+
+        parser
+            .parse_url(&String::from(
+                "https://music.youtube.com/playlist?list=OLAK5uy_nSewatBUjTf3IO_DIqqMXn3ps_WbEAyi4",
+            ))
+            .expect("Url should be parsable to a YT music playlist.");
+    }
 }
