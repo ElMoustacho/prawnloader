@@ -7,12 +7,10 @@ use async_trait::async_trait;
 
 pub(crate) struct YoutubeParser {}
 
+#[async_trait]
 impl SongParser for YoutubeParser {
-    fn parse_url(&self, url: &String) -> ParserResult {
-        match parse_video(url) {
-            Err(_) => parse_playlist(url),
-            result => result,
-        }
+    async fn parse_url(&self, url: &String) -> ParserResult {
+        parse_video(url).await.or(parse_playlist(url).await)
     }
 }
 
@@ -33,11 +31,8 @@ impl DownloadableSong for YoutubeDownloadable {
     }
 }
 
-// FIXME: Remove blocking operation
-fn create_song_from_id(id: &rustube::Id) -> Result<Song, rustube::Error> {
-    let video_details =
-        tokio::task::block_in_place(|| rustube::blocking::Video::from_id(id.as_owned()))?
-            .video_details();
+async fn create_song_from_id(id: rustube::IdBuf) -> Result<Song, rustube::Error> {
+    let video_details = rustube::Video::from_id(id).await?.video_details();
 
     let album = Album {
         name: "album".to_string(),
@@ -53,7 +48,7 @@ fn create_song_from_id(id: &rustube::Id) -> Result<Song, rustube::Error> {
     })
 }
 
-fn parse_video(url: &String) -> ParserResult {
+async fn parse_video(url: &String) -> ParserResult {
     let id = rustube::Id::from_raw(url);
 
     if let Err(_) = id {
@@ -61,7 +56,7 @@ fn parse_video(url: &String) -> ParserResult {
     }
 
     let id = id.unwrap().as_owned();
-    let song = create_song_from_id(&id);
+    let song = create_song_from_id(id.clone()).await;
 
     match song {
         Err(_) => Err(()),
@@ -73,7 +68,7 @@ fn parse_video(url: &String) -> ParserResult {
 }
 
 // TODO: Implement playlist parsing
-fn parse_playlist(url: &String) -> ParserResult {
+async fn parse_playlist(url: &String) -> ParserResult {
     Err(())
 }
 
@@ -88,12 +83,14 @@ mod tests {
 
         parser
             .parse_url(&String::from("https://www.youtube.com/watch?v=ORofRTMg-iY"))
+            .await
             .expect("Url should be parsable to a YT video.");
 
         parser
             .parse_url(&String::from(
                 "https://music.youtube.com/watch?v=gAy5WZo9kts",
             ))
+            .await
             .expect("Url should be parsable to a YT music song.");
     }
 
@@ -105,12 +102,14 @@ mod tests {
             .parse_url(&String::from(
                 "https://www.youtube.com/playlist?list=PLevurNKwl9HEcxa6K3dUoQ1jSBUUC2UxI",
             ))
+            .await
             .expect("Url should be parsable to a YT playlist.");
 
         parser
             .parse_url(&String::from(
                 "https://music.youtube.com/playlist?list=OLAK5uy_nSewatBUjTf3IO_DIqqMXn3ps_WbEAyi4",
             ))
+            .await
             .expect("Url should be parsable to a YT music playlist.");
     }
 }

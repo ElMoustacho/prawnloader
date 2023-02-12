@@ -36,8 +36,8 @@ impl Downloader {
         }
     }
 
-    pub fn add_to_queue(&mut self, url: impl Into<String>) -> Result<(), ()> {
-        let mut downloadables = self.parser.parse_url(&url.into())?;
+    pub async fn add_to_queue(&mut self, url: impl Into<String>) -> Result<(), ()> {
+        let mut downloadables = self.parser.parse_url(&url.into()).await?;
 
         self.queue.append(&mut downloadables);
 

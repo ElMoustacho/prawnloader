@@ -1,3 +1,5 @@
+use async_trait::async_trait;
+
 use crate::{downloader::DownloadableSong, youtube::YoutubeParser};
 
 pub type ParserResult = Result<Vec<Box<dyn DownloadableSong>>, ()>;
@@ -5,8 +7,9 @@ pub type ParserResult = Result<Vec<Box<dyn DownloadableSong>>, ()>;
 /**
 A parser used to transform URLs into downloadable songs with metadata.
  */
-pub trait SongParser: Send {
-    fn parse_url(&self, url: &String) -> ParserResult;
+#[async_trait]
+pub trait SongParser: Send + Sync {
+    async fn parse_url(&self, url: &String) -> ParserResult;
 }
 
 /**
@@ -42,9 +45,9 @@ impl Parser {
     # Errors
     This function will return an error if the url passed doesn't match with any parser.
     */
-    pub(crate) fn parse_url(&self, url: &String) -> ParserResult {
+    pub(crate) async fn parse_url(&self, url: &String) -> ParserResult {
         for parser in self.parsers.iter() {
-            if let Ok(downloadable_list) = parser.parse_url(&url) {
+            if let Ok(downloadable_list) = parser.parse_url(&url).await {
                 return Ok(downloadable_list);
             }
         }
@@ -57,8 +60,8 @@ impl Parser {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_default_parsers() {
+    #[tokio::test]
+    async fn test_default_parsers() {
         let parser = Parser::new();
 
         let urls = [
@@ -78,6 +81,7 @@ mod tests {
         for url in urls {
             parser
                 .parse_url(&url.to_string())
+                .await
                 .expect(&format!("Url '{}' should be parsable.", url)[..]);
         }
     }
