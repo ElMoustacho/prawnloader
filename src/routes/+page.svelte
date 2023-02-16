@@ -29,6 +29,9 @@
 		<input type="text" bind:value={url} />
 		<button on:click={() => download()}> Add to queue </button>
 	</div>
+
+	<button on:click={() => invoke('download_queue', {})} />
+
 	<div class="column">
 		<h1>Queue of downloads</h1>
 		<div>

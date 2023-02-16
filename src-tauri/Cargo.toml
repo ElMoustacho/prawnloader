@@ -23,6 +23,7 @@ rustube = { version = "0.6.0", features = ["blocking"] }
 regex = "1.7.1"
 async-trait = "0.1.64"
 reqwest = "0.11.14"
+threadpool = "1.8.1"
 
 [features]
 # by default Tauri runs in production mode

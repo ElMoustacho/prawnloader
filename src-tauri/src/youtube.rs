@@ -4,6 +4,8 @@ use crate::{
     music::{Album, Song},
 };
 use async_trait::async_trait;
+use std::path::PathBuf;
+use tauri::api::path::download_dir;
 
 pub(crate) struct YoutubeParser {}
 
@@ -21,9 +23,10 @@ pub(crate) struct YoutubeDownloadable {
 
 #[async_trait]
 impl DownloadableSong for YoutubeDownloadable {
-    // TODO: Implement downloading
-    async fn download(&self, dest_folder: &std::path::Path) -> Result<Box<std::path::Path>, ()> {
-        todo!()
+    // TODO: Make download more modular
+    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf, ()> {
+        rustube::download_best_quality(&self.id).await.unwrap();
+        Ok(download_dir().unwrap())
     }
 
     fn get_song(&self) -> &Song {

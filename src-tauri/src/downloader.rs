@@ -1,6 +1,8 @@
 use crate::{music::Song, parser::Parser};
 use async_trait::async_trait;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use tauri::async_runtime::block_on;
+use threadpool::{Builder, ThreadPool};
 
 type Queue = Vec<Box<dyn DownloadableSong>>;
 
@@ -11,8 +13,8 @@ pub enum Event {
 }
 
 #[async_trait]
-pub trait DownloadableSong: Send {
-    async fn download(&self, dest_folder: &Path) -> Result<Box<Path>, ()>;
+pub trait DownloadableSong: Send + Sync {
+    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf, ()>;
     fn get_song(&self) -> &Song;
 }
 
@@ -25,6 +27,7 @@ pub struct Downloader {
     pub parser: Parser,
     queue: Queue,
     event_listeners: Vec<EventListener>,
+    pool: ThreadPool,
 }
 
 impl Downloader {
@@ -33,6 +36,7 @@ impl Downloader {
             queue: Vec::new(),
             event_listeners: Vec::new(),
             parser: Parser::new(),
+            pool: Builder::new().build(),
         }
     }
 
@@ -72,12 +76,21 @@ impl Downloader {
         result
     }
 
-    pub async fn download(&self, index: usize, dest_folder: &Path) -> Result<Box<Path>, ()> {
-        if let Some(downloadable) = self.queue.get(index) {
-            return downloadable.download(dest_folder).await;
+    pub fn download(&mut self, index: usize, dest_folder: &Path) -> Result<(), ()> {
+        if index < self.queue.len() {
+            return Err(());
         }
 
-        Err(())
+        let downloadable = self.queue.swap_remove(index);
+        self._download(downloadable, dest_folder);
+
+        Ok(())
+    }
+
+    pub fn download_queue(&mut self, dest_folder: &Path) {
+        while let Some(downloadable) = self.queue.pop() {
+            self._download(downloadable, dest_folder)
+        }
     }
 
     pub fn on<F>(&mut self, event: Event, callback: F)
@@ -96,5 +109,13 @@ impl Downloader {
                 (listener.callback)(&self);
             }
         })
+    }
+
+    fn _download(&self, downloadable: Box<dyn DownloadableSong>, dest_folder: &Path) {
+        let dest_folder = dest_folder.to_path_buf();
+
+        self.pool.execute(move || {
+            block_on(downloadable.download(dest_folder));
+        });
     }
 }

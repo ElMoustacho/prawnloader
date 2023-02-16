@@ -5,7 +5,7 @@
 
 use prawnloader::downloader::{self, Event};
 use std::sync::Arc;
-use tauri::{Manager, State};
+use tauri::{api::path::download_dir, Manager, State};
 use tokio::sync::Mutex;
 
 struct AppState {
@@ -24,6 +24,24 @@ async fn remove_from_queue(id: usize, state: State<'_, AppState>) -> Result<(), 
     let result = state.downloader.lock().await.remove_from_queue(id);
 
     result
+}
+
+#[tauri::command]
+async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
+    let download_dir = &download_dir().unwrap();
+
+    let result = state.downloader.lock().await.download(index, download_dir);
+
+    result
+}
+
+#[tauri::command]
+async fn download_queue(state: State<'_, AppState>) -> Result<(), ()> {
+    let download_dir = &download_dir().unwrap();
+
+    state.downloader.lock().await.download_queue(download_dir);
+
+    Ok(())
 }
 
 fn main() {
@@ -51,7 +69,12 @@ fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![add_to_queue, remove_from_queue])
+        .invoke_handler(tauri::generate_handler![
+            add_to_queue,
+            remove_from_queue,
+            download,
+            download_queue
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
