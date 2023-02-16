@@ -47,21 +47,23 @@ async fn download_queue(state: State<'_, AppState>) -> Result<(), ()> {
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            let mut downloader = downloader::Downloader::new();
+            let downloader = downloader::Downloader::new();
 
             let handle = app.handle();
-            downloader.on(Event::AddToQueue, move |downloader| {
-                handle
-                    .emit_all("queue_update", downloader.get_queue_as_songs())
-                    .expect("Error while emitting event.");
-            });
 
-            let handle = app.handle();
-            downloader.on(Event::RemoveFromQueue, move |downloader| {
-                handle
-                    .emit_all("queue_update", downloader.get_queue_as_songs())
-                    .expect("Error while emitting event.");
-            });
+            downloader
+                .event_manager
+                .lock()
+                .unwrap()
+                .add_callback(move |event| match event {
+                    Event::AddToQueue(queue) | Event::RemoveFromQueue(queue) => {
+                        handle.emit_all("queue_update", queue).unwrap()
+                    }
+
+                    Event::DownloadComplete(file_location) => {
+                        handle.emit_all("download_complete", file_location).unwrap()
+                    }
+                });
 
             app.manage(AppState {
                 downloader: Arc::new(Mutex::new(downloader)),

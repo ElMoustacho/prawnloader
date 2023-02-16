@@ -1,15 +1,17 @@
+use crate::events::EventManager;
 use crate::{music::Song, parser::Parser};
 use async_trait::async_trait;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 use tauri::async_runtime::block_on;
 use threadpool::{Builder, ThreadPool};
 
 type Queue = Vec<Box<dyn DownloadableSong>>;
 
-#[derive(PartialEq)]
 pub enum Event {
-    AddToQueue,
-    RemoveFromQueue,
+    AddToQueue(Vec<Song>),
+    RemoveFromQueue(Vec<Song>),
+    DownloadComplete(PathBuf),
 }
 
 #[async_trait]
@@ -18,24 +20,19 @@ pub trait DownloadableSong: Send + Sync {
     fn get_song(&self) -> &Song;
 }
 
-struct EventListener {
-    event: Event,
-    callback: Box<dyn Fn(&Downloader) -> () + Send>,
-}
-
 pub struct Downloader {
+    pub event_manager: Arc<Mutex<EventManager<Event>>>,
     pub parser: Parser,
     queue: Queue,
-    event_listeners: Vec<EventListener>,
     pool: ThreadPool,
 }
 
 impl Downloader {
     pub fn new() -> Downloader {
         Downloader {
-            queue: Vec::new(),
-            event_listeners: Vec::new(),
             parser: Parser::new(),
+            queue: Vec::new(),
+            event_manager: Arc::new(Mutex::new(EventManager::new())),
             pool: Builder::new().build(),
         }
     }
@@ -45,7 +42,10 @@ impl Downloader {
 
         self.queue.append(&mut downloadables);
 
-        self.emit_event(Event::AddToQueue);
+        self.event_manager
+            .lock()
+            .unwrap()
+            .emit_event(Event::AddToQueue(self.get_queue_as_songs()));
 
         Ok(())
     }
@@ -57,7 +57,10 @@ impl Downloader {
 
         self.queue.remove(index);
 
-        self.emit_event(Event::RemoveFromQueue);
+        self.event_manager
+            .lock()
+            .unwrap()
+            .emit_event(Event::RemoveFromQueue(self.get_queue_as_songs()));
 
         Ok(())
     }
@@ -93,29 +96,23 @@ impl Downloader {
         }
     }
 
-    pub fn on<F>(&mut self, event: Event, callback: F)
-    where
-        F: Fn(&Downloader) -> () + Send + 'static,
-    {
-        self.event_listeners.push(EventListener {
-            event,
-            callback: Box::new(callback),
-        });
-    }
-
-    fn emit_event(&self, event: Event) {
-        self.event_listeners.iter().for_each(|listener| {
-            if listener.event == event {
-                (listener.callback)(&self);
-            }
-        })
-    }
-
     fn _download(&self, downloadable: Box<dyn DownloadableSong>, dest_folder: &Path) {
         let dest_folder = dest_folder.to_path_buf();
+        let event_manager = self.event_manager.clone();
 
         self.pool.execute(move || {
-            block_on(downloadable.download(dest_folder));
+            if let Ok(result) = block_on(downloadable.download(dest_folder)) {
+                event_manager
+                    .lock()
+                    .unwrap()
+                    .emit_event(Event::DownloadComplete(result))
+            };
         });
+    }
+}
+
+impl Default for Downloader {
+    fn default() -> Self {
+        Self::new()
     }
 }

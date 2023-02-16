@@ -6,12 +6,16 @@
 	let url = 'https://www.youtube.com/watch?v=rmI3TpefQpk';
 	let downloads: any[] = [];
 
-	onMount(() =>
+	onMount(() => {
 		listen<any[]>('queue_update', (e) => {
 			console.info('Got ', e.payload);
 			downloads = e.payload;
-		})
-	);
+		});
+
+		listen<any[]>('download_complete', (e) => {
+			console.info('Download complete.', e);
+		});
+	});
 
 	async function download() {
 		try {

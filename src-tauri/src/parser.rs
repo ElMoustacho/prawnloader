@@ -1,6 +1,5 @@
-use async_trait::async_trait;
-
 use crate::{downloader::DownloadableSong, youtube::YoutubeParser};
+use async_trait::async_trait;
 
 pub type ParserResult = Result<Vec<Box<dyn DownloadableSong>>, ()>;
 
