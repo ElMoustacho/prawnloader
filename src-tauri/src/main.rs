@@ -63,6 +63,10 @@ fn main() {
                     Event::DownloadComplete(file_location) => {
                         handle.emit_all("download_complete", file_location).unwrap()
                     }
+
+                    Event::DownloadStarted(song) => {
+                        handle.emit_all("download_started", song).unwrap()
+                    }
                 });
 
             app.manage(AppState {

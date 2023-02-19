@@ -1,5 +1,5 @@
 <script lang="ts">
-	import '../app.scss';
+	import '../scss/app.scss';
 
 	const links = [
 		['/', 'Home'],
@@ -8,15 +8,10 @@
 </script>
 
 <main>
-	<nav class="navbar" aria-label="main navigation">
-		<div class="navbar-brand">
-			<div class="navbar-item">
-				<img src="/favicon.png" alt="" />
-			</div>
-		</div>
-
-		<div class="navbar-start">
+	<div class="tabs">
+		<ul>
 			{#each links as link}
+				<!-- TODO: Add "is-active" when on a page under this link -->
 				<a
 					class="navbar-item"
 					data-sveltekit-preload-data
@@ -25,8 +20,8 @@
 					{link[1]}
 				</a>
 			{/each}
-		</div>
-	</nav>
+		</ul>
+	</div>
 
 	<section class="section container">
 		<slot />

@@ -11,6 +11,7 @@ type Queue = Vec<Box<dyn DownloadableSong>>;
 pub enum Event {
     AddToQueue(Vec<Song>),
     RemoveFromQueue(Vec<Song>),
+    DownloadStarted(Song),
     DownloadComplete(PathBuf),
 }
 
