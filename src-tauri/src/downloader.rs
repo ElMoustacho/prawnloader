@@ -11,6 +11,7 @@ type Queue = Vec<Box<dyn DownloadableSong>>;
 pub enum Event {
     AddToQueue(Vec<Song>),
     RemoveFromQueue(Vec<Song>),
+    ClearQueue,
     DownloadStarted(Song),
     DownloadComplete(PathBuf),
 }
@@ -64,6 +65,15 @@ impl Downloader {
             .emit_event(Event::RemoveFromQueue(self.get_queue_as_songs()));
 
         Ok(())
+    }
+
+    pub fn clear_queue(&mut self) {
+        self.queue.clear();
+
+        self.event_manager
+            .lock()
+            .unwrap()
+            .emit_event(Event::ClearQueue);
     }
 
     pub fn get_queue(&self) -> &Queue {

@@ -27,6 +27,13 @@ async fn remove_from_queue(id: usize, state: State<'_, AppState>) -> Result<(), 
 }
 
 #[tauri::command]
+async fn clear_queue(state: State<'_, AppState>) -> Result<(), ()> {
+    state.downloader.lock().await.clear_queue();
+
+    Ok(())
+}
+
+#[tauri::command]
 async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
     let download_dir = &download_dir().unwrap();
 
@@ -60,6 +67,12 @@ fn main() {
                         handle.emit_all("queue_update", queue).unwrap()
                     }
 
+                    Event::ClearQueue => {
+                        handle
+                            .emit_all("queue_update", Vec::<String>::new())
+                            .unwrap();
+                    }
+
                     Event::DownloadComplete(file_location) => {
                         handle.emit_all("download_complete", file_location).unwrap()
                     }
@@ -79,7 +92,8 @@ fn main() {
             add_to_queue,
             remove_from_queue,
             download,
-            download_queue
+            download_queue,
+            clear_queue
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
