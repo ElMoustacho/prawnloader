@@ -12,11 +12,7 @@
 		<ul>
 			{#each links as link}
 				<!-- TODO: Add "is-active" when on a page under this link -->
-				<a
-					class="navbar-item"
-					data-sveltekit-preload-data
-					href={link[0]}
-				>
+				<a class="navbar-item" data-sveltekit-preload-data href={link[0]}>
 					{link[1]}
 				</a>
 			{/each}
