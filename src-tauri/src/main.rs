@@ -13,8 +13,8 @@ struct AppState {
 }
 
 #[tauri::command]
-async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), ()> {
-    let result = state.downloader.lock().await.add_to_queue(url).await;
+async fn add_to_queue(urls: Vec<String>, state: State<'_, AppState>) -> Result<(), ()> {
+    let result = state.downloader.lock().await.add_to_queue(urls).await;
 
     result
 }

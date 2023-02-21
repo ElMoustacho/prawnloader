@@ -7,31 +7,27 @@
 
 	let urls = '';
 	let downloads: Song[] = [
-		{
-			title: 'Violence No Matter What (Duet with Lzzy Hale)',
-			track: 2,
-			album: {
-				artist: 'Avatar',
-				cover: null,
-				name: 'Dance Devil Dance',
-				year: 2023,
-			},
-		},
-		{
-			title: 'Gotta Wanna Riot',
-			track: 3,
-			album: {
-				artist: 'Avatar',
-				cover: null,
-				name: 'Dance Devil Dance',
-				year: 2023,
-			},
-		},
+		// {
+		// 	title: 'Violence No Matter What (Duet with Lzzy Hale)',
+		// 	track: 2,
+		// 	album: {
+		// 		artist: 'Avatar',
+		// 		cover: null,
+		// 		name: 'Dance Devil Dance',
+		// 		year: 2023,
+		// 	},
+		// },
+		// {
+		// 	title: 'Gotta Wanna Riot',
+		// 	track: 3,
+		// 	album: {
+		// 		artist: 'Avatar',
+		// 		cover: null,
+		// 		name: 'Dance Devil Dance',
+		// 		year: 2023,
+		// 	},
+		// },
 	];
-
-	for (let i = 0; i < 3; i++) {
-		downloads = [...downloads, ...downloads];
-	}
 
 	onMount(() => {
 		listen('queue_update', e => {
@@ -41,9 +37,8 @@
 	});
 
 	function addToQueue() {
-		for (let url in urls.split('\n')) {
-			invoke('add_to_queue', { url });
-		}
+		const _urls = urls.split('\n');
+		invoke('add_to_queue', { urls: _urls });
 
 		urls = '';
 	}
@@ -54,7 +49,7 @@
 
 	function clearQueue() {
 		if (confirm('Do you want to clear the queue?')) {
-			invoke('clear_queue');
+			invoke('clear_queue', {});
 		}
 	}
 </script>
@@ -108,7 +103,7 @@
 					<button class="delete" aria-label="delete" />
 				</div>
 			{:else}
-				<h2>No downloads :(</h2>
+				<h2 class="subtitle has-text-centered">You have no song in the queue</h2>
 			{/each}
 		</div>
 	</div>
@@ -136,7 +131,7 @@
 
 	// DEBUG: Max height
 	.column > .block {
-		max-height: 500px;
+		height: 300px;
 		overflow-y: auto;
 	}
 </style>

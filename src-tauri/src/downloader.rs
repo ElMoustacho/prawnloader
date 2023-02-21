@@ -1,6 +1,8 @@
 use crate::events::EventManager;
 use crate::{music::Song, parser::Parser};
 use async_trait::async_trait;
+use futures::stream::FuturesOrdered;
+use futures::StreamExt;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tauri::async_runtime::block_on;
@@ -39,10 +41,20 @@ impl Downloader {
         }
     }
 
-    pub async fn add_to_queue(&mut self, url: impl Into<String>) -> Result<(), ()> {
-        let mut downloadables = self.parser.parse_url(&url.into()).await?;
+    pub async fn add_to_queue(&mut self, urls: Vec<impl Into<String>>) -> Result<(), ()> {
+        let mut futures = FuturesOrdered::new();
 
-        self.queue.append(&mut downloadables);
+        for url in urls {
+            futures.push_back(async { self.parser.parse_url(&url.into()).await });
+        }
+
+        let downloadables_vec: Vec<_> = futures.collect().await;
+
+        for downloadables in downloadables_vec {
+            if let Ok(mut downloadables) = downloadables {
+                self.queue.append(&mut downloadables);
+            }
+        }
 
         self.event_manager
             .lock()
