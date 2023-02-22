@@ -2,6 +2,7 @@
 	import type { Song } from 'src/types/music';
 	import { invoke } from '@tauri-apps/api';
 	import { listen } from '@tauri-apps/api/event';
+	import { confirm, message } from '@tauri-apps/api/dialog';
 	import { onMount } from 'svelte';
 	import bufferToImg from '$lib/ts/bufferToImg';
 
@@ -34,10 +35,14 @@
 			console.info('Got ', e.payload);
 			downloads = e.payload;
 		});
+
+		listen('parse_error', e => {
+			message(`Error parsing url: "${e.payload}"`);
+		});
 	});
 
 	function addToQueue() {
-		const _urls = urls.split('\n');
+		const _urls = urls.trim().split('\n');
 		invoke('add_to_queue', { urls: _urls });
 
 		urls = '';
@@ -47,8 +52,8 @@
 		invoke('download_queue', {});
 	}
 
-	function clearQueue() {
-		if (confirm('Do you want to clear the queue?')) {
+	async function clearQueue() {
+		if ((await confirm('Do you want to clear the queue?')) === true) {
 			invoke('clear_queue', {});
 		}
 	}

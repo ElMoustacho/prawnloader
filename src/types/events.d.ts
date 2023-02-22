@@ -6,5 +6,6 @@ module '@tauri-apps/api/event' {
 		queue_update: Song[];
 		download_complete: string;
 		download_started: Song;
+		parse_error: string;
 	}
 }

@@ -13,6 +13,14 @@
 	"tauri": {
 		"allowlist": {
 			"all": false,
+			"dialog": {
+				"all": false,
+				"ask": false,
+				"confirm": true,
+				"message": true,
+				"open": false,
+				"save": false
+			},
 			"shell": {
 				"all": false,
 				"open": true
@@ -63,7 +71,7 @@
 				"height": 600,
 				"resizable": true,
 				"title": "prawnloader",
-				"width": 800
+				"width": 1100
 			}
 		]
 	}

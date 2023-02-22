@@ -3,16 +3,72 @@ use crate::{
     downloader::DownloadableSong,
     music::{Album, Song},
 };
+use anyhow::Result;
 use async_trait::async_trait;
+use futures::StreamExt;
+use regex::Regex;
+use rustube::Video;
 use std::path::PathBuf;
-use tauri::api::path::download_dir;
 
-pub(crate) struct YoutubeParser {}
+pub(crate) struct YoutubeParser {
+    ytextract_client: ytextract::Client,
+}
+
+impl YoutubeParser {
+    pub fn new() -> Self {
+        YoutubeParser {
+            ytextract_client: ytextract::Client::new(),
+        }
+    }
+
+    async fn parse_video(&self, id: ytextract::video::Id) -> Result<YoutubeDownloadable> {
+        let video = self.ytextract_client.video(id).await?;
+        let song = create_song_from_video(video).await?;
+
+        let id = rustube::Id::from_raw(&id)?.as_owned();
+
+        Ok(YoutubeDownloadable { song, id })
+    }
+
+    async fn parse_video_url(&self, url: &String) -> ParserResult {
+        let id = url.parse::<ytextract::video::Id>()?;
+        let video = self.parse_video(id).await?;
+
+        Ok(vec![Box::new(video)])
+    }
+
+    // FIXME: Does all the parses sequentially
+    async fn parse_playlist_url(&self, url: &String) -> ParserResult {
+        let playlist_info = self.ytextract_client.playlist(url.to_string().parse()?);
+
+        let videos = playlist_info.await.unwrap().videos();
+
+        futures::pin_mut!(videos);
+
+        let mut result: Vec<Box<dyn DownloadableSong>> = Vec::new();
+        while let Some(video) = videos.next().await {
+            match video {
+                Ok(video) => {
+                    let video = self.parse_video(video.id()).await?;
+
+                    result.push(Box::new(video))
+                }
+                _ => (),
+            }
+        }
+
+        Ok(result)
+    }
+}
 
 #[async_trait]
 impl SongParser for YoutubeParser {
     async fn parse_url(&self, url: &String) -> ParserResult {
-        parse_video(url).await.or(parse_playlist(url).await)
+        let url = &parse_yt_music_to_yt(url);
+
+        self.parse_video_url(url)
+            .await
+            .or(self.parse_playlist_url(url).await)
     }
 }
 
@@ -23,10 +79,16 @@ pub(crate) struct YoutubeDownloadable {
 
 #[async_trait]
 impl DownloadableSong for YoutubeDownloadable {
-    // TODO: Make download more modular
-    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf, ()> {
-        rustube::download_best_quality(&self.id).await.unwrap();
-        Ok(download_dir().unwrap())
+    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf> {
+        let video = Video::from_id(self.id.to_owned()).await?;
+
+        video
+            .best_audio()
+            .unwrap()
+            .download_to_dir(dest_folder.clone())
+            .await?;
+
+        Ok(dest_folder)
     }
 
     fn get_song(&self) -> &Song {
@@ -34,45 +96,34 @@ impl DownloadableSong for YoutubeDownloadable {
     }
 }
 
-async fn create_song_from_id(id: rustube::IdBuf) -> Result<Song, rustube::Error> {
-    let video_details = rustube::Video::from_id(id).await?.video_details();
+// FIXME: Add more checks instead of unwraps
+async fn create_song_from_video(video: ytextract::Video) -> Result<Song> {
+    let thumbnail = video.thumbnails().first().unwrap().url.to_string();
+    let thumbnail = reqwest::get(thumbnail)
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap()
+        .to_vec();
 
     let album = Album {
         name: "album".to_string(),
-        artist: video_details.author.to_string(),
+        artist: video.channel().name().to_string(),
         year: None,
-        cover: None,
+        cover: Some(thumbnail),
     };
 
     Ok(Song {
-        title: video_details.title.to_string(),
+        title: video.title().to_string(),
         track: None,
         album,
     })
 }
 
-async fn parse_video(url: &String) -> ParserResult {
-    let id = rustube::Id::from_raw(url);
-
-    if let Err(_) = id {
-        return Err(());
-    }
-
-    let id = id.unwrap().as_owned();
-    let song = create_song_from_id(id.clone()).await;
-
-    match song {
-        Err(_) => Err(()),
-        Ok(_) => Ok(vec![Box::new(YoutubeDownloadable {
-            song: song.unwrap(),
-            id,
-        })]),
-    }
-}
-
-// TODO: Implement playlist parsing
-async fn parse_playlist(url: &String) -> ParserResult {
-    Err(())
+fn parse_yt_music_to_yt(url: &str) -> String {
+    let regex = Regex::new(r"(?P<before>https?://)?music(?P<after>\.youtube\.com.*)").unwrap();
+    regex.replace_all(url, "${before}www${after}").to_string()
 }
 
 #[cfg(test)]
@@ -82,7 +133,7 @@ mod tests {
 
     #[tokio::test]
     async fn video_parse() {
-        let parser = Parser::from(vec![Box::new(YoutubeParser {})]);
+        let parser = Parser::from(vec![Box::new(YoutubeParser::new())]);
 
         parser
             .parse_url(&String::from("https://www.youtube.com/watch?v=ORofRTMg-iY"))
@@ -99,7 +150,7 @@ mod tests {
 
     #[tokio::test]
     async fn playlist_parse() {
-        let parser = Parser::new();
+        let parser = Parser::from(vec![Box::new(YoutubeParser::new())]);
 
         parser
             .parse_url(&String::from(

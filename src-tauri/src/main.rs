@@ -80,6 +80,8 @@ fn main() {
                     Event::DownloadStarted(song) => {
                         handle.emit_all("download_started", song).unwrap()
                     }
+
+                    Event::ParseError(url) => handle.emit_all("parse_error", url).unwrap(),
                 });
 
             app.manage(AppState {

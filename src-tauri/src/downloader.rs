@@ -1,5 +1,6 @@
 use crate::events::EventManager;
 use crate::{music::Song, parser::Parser};
+use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
@@ -16,11 +17,12 @@ pub enum Event {
     ClearQueue,
     DownloadStarted(Song),
     DownloadComplete(PathBuf),
+    ParseError(String),
 }
 
 #[async_trait]
 pub trait DownloadableSong: Send + Sync {
-    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf, ()>;
+    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf>;
     fn get_song(&self) -> &Song;
 }
 
@@ -41,10 +43,11 @@ impl Downloader {
         }
     }
 
-    pub async fn add_to_queue(&mut self, urls: Vec<impl Into<String>>) -> Result<(), ()> {
+    pub async fn add_to_queue(&mut self, urls: Vec<String>) -> Result<(), ()> {
+        let mut i = 0;
         let mut futures = FuturesOrdered::new();
 
-        for url in urls {
+        for url in urls.clone() {
             futures.push_back(async { self.parser.parse_url(&url.into()).await });
         }
 
@@ -53,7 +56,14 @@ impl Downloader {
         for downloadables in downloadables_vec {
             if let Ok(mut downloadables) = downloadables {
                 self.queue.append(&mut downloadables);
+            } else {
+                self.event_manager
+                    .lock()
+                    .unwrap()
+                    .emit_event(Event::ParseError(urls[i].clone()))
             }
+
+            i += 1;
         }
 
         self.event_manager
