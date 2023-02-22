@@ -1,40 +1,18 @@
 <script lang="ts">
-	import type { Song } from 'src/types/music';
 	import { invoke } from '@tauri-apps/api';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { confirm, message } from '@tauri-apps/api/dialog';
 	import { onMount } from 'svelte';
 	import bufferToImg from '$lib/ts/bufferToImg';
 	import unlistenAllTauriEvents from '$lib/ts/unlistenAllTauriEvents';
+	import { queue } from '$lib/ts/stores';
 
 	let urls = '';
-	let downloads: Song[] = [
-		// {
-		// 	title: 'Violence No Matter What (Duet with Lzzy Hale)',
-		// 	track: 2,
-		// 	album: {
-		// 		artist: 'Avatar',
-		// 		cover: null,
-		// 		name: 'Dance Devil Dance',
-		// 		year: 2023,
-		// 	},
-		// },
-		// {
-		// 	title: 'Gotta Wanna Riot',
-		// 	track: 3,
-		// 	album: {
-		// 		artist: 'Avatar',
-		// 		cover: null,
-		// 		name: 'Dance Devil Dance',
-		// 		year: 2023,
-		// 	},
-		// },
-	];
 
 	onMount(() => {
 		let events: Promise<UnlistenFn>[] = [];
 
-		events.push(listen('queue_update', e => (downloads = e.payload)));
+		events.push(listen('queue_update', e => ($queue = e.payload)));
 
 		events.push(listen('parse_error', e => message(`Error parsing url: "${e.payload}"`)));
 
@@ -82,7 +60,7 @@
 		</div>
 
 		<div class="block box">
-			{#each downloads as download}
+			{#each $queue as download}
 				<div class="song p-3 is-flex is-align-items-center is-unselectable">
 					<figure class="is-flex-shrink-0 image is-32x32">
 						<img
