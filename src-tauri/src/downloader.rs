@@ -11,6 +11,7 @@ use threadpool::{Builder, ThreadPool};
 
 type Queue = Vec<Box<dyn DownloadableSong>>;
 
+// TOOD: Improve events to be more generic when needed
 pub enum Event {
     AddToQueue(Vec<Song>),
     RemoveFromQueue(Vec<Song>),
@@ -113,7 +114,7 @@ impl Downloader {
     }
 
     pub fn download(&mut self, index: usize, dest_folder: &Path) -> Result<(), ()> {
-        if index < self.queue.len() {
+        if index >= self.queue.len() {
             return Err(());
         }
 
@@ -125,6 +126,11 @@ impl Downloader {
 
     pub fn download_queue(&mut self, dest_folder: &Path) {
         while let Some(downloadable) = self.queue.pop() {
+            self.event_manager
+                .lock()
+                .unwrap()
+                .emit_event(Event::RemoveFromQueue(self.get_queue_as_songs()));
+
             self._download(downloadable, dest_folder)
         }
     }

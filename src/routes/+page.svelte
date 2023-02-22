@@ -1,10 +1,11 @@
 <script lang="ts">
 	import type { Song } from 'src/types/music';
 	import { invoke } from '@tauri-apps/api';
-	import { listen } from '@tauri-apps/api/event';
+	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { confirm, message } from '@tauri-apps/api/dialog';
 	import { onMount } from 'svelte';
 	import bufferToImg from '$lib/ts/bufferToImg';
+	import unlistenAllTauriEvents from '$lib/ts/unlistenAllTauriEvents';
 
 	let urls = '';
 	let downloads: Song[] = [
@@ -31,14 +32,15 @@
 	];
 
 	onMount(() => {
-		listen('queue_update', e => {
-			console.info('Got ', e.payload);
-			downloads = e.payload;
-		});
+		let events: Promise<UnlistenFn>[] = [];
 
-		listen('parse_error', e => {
-			message(`Error parsing url: "${e.payload}"`);
-		});
+		events.push(listen('queue_update', e => (downloads = e.payload)));
+
+		events.push(listen('parse_error', e => message(`Error parsing url: "${e.payload}"`)));
+
+		events.push(listen('download_complete', e => message(`Download "${e.payload}" complete!`)));
+
+		return () => unlistenAllTauriEvents(events);
 	});
 
 	function addToQueue() {
