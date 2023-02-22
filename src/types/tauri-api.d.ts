@@ -98,10 +98,7 @@ module '@tauri-apps/api' {
 	 *
 	 * @since 1.0.0
 	 */
-	declare function convertFileSrc(
-		filePath: string,
-		protocol?: string
-	): string;
+	declare function convertFileSrc(filePath: string, protocol?: string): string;
 
 	type tauri_InvokeArgs = InvokeArgs;
 	declare const tauri_transformCallback: typeof transformCallback;

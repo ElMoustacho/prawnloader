@@ -157,10 +157,7 @@ module '@tauri-apps/api/event' {
 	 *
 	 * @since 1.0.0
 	 */
-	declare function once<T>(
-		event: EventName,
-		handler: EventCallback<T>
-	): Promise<UnlistenFn>;
+	declare function once<T>(event: EventName, handler: EventCallback<T>): Promise<UnlistenFn>;
 	/**
 	 * Emits an event to the backend.
 	 * @example
