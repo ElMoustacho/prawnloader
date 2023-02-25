@@ -5,6 +5,7 @@ use crate::{
 };
 use anyhow::Result;
 use async_trait::async_trait;
+use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use regex::Regex;
 use rustube::Video;
@@ -37,27 +38,35 @@ impl YoutubeParser {
         Ok(vec![Box::new(video)])
     }
 
-    // FIXME: Does all the parses sequentially
     async fn parse_playlist_url(&self, url: &String) -> ParserResult {
-        let playlist_info = self.ytextract_client.playlist(url.to_string().parse()?);
+        let videos = self
+            .ytextract_client
+            .playlist(url.to_string().parse()?)
+            .await?
+            .videos();
 
-        let videos = playlist_info.await.unwrap().videos();
+        let mut futures = FuturesOrdered::new();
 
         futures::pin_mut!(videos);
 
-        let mut result: Vec<Box<dyn DownloadableSong>> = Vec::new();
         while let Some(video) = videos.next().await {
-            match video {
-                Ok(video) => {
-                    let video = self.parse_video(video.id()).await?;
+            let Ok(video) = video else { continue };
 
-                    result.push(Box::new(video))
-                }
-                _ => (),
-            }
+            futures.push_back(self.parse_video(video.id()));
         }
 
-        Ok(result)
+        let filtered_parses: Vec<Box<dyn DownloadableSong>> = futures
+            .filter_map(|result| async {
+                if let Ok(result) = result {
+                    Some(Box::new(result) as _)
+                } else {
+                    None
+                }
+            })
+            .collect()
+            .await;
+
+        Ok(filtered_parses)
     }
 }
 
