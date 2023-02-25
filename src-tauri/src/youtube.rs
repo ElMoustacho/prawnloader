@@ -23,7 +23,7 @@ impl YoutubeParser {
 
     async fn parse_video(&self, id: ytextract::video::Id) -> Result<YoutubeDownloadable> {
         let video = self.ytextract_client.video(id).await?;
-        let song = create_song_from_video(video).await?;
+        let song = build_song_from_video(video).await?;
 
         let id = rustube::Id::from_raw(&id)?.as_owned();
 
@@ -96,22 +96,15 @@ impl DownloadableSong for YoutubeDownloadable {
     }
 }
 
-// FIXME: Add more checks instead of unwraps
-async fn create_song_from_video(video: ytextract::Video) -> Result<Song> {
-    let thumbnail = video.thumbnails().first().unwrap().url.to_string();
-    let thumbnail = reqwest::get(thumbnail)
-        .await
-        .unwrap()
-        .bytes()
-        .await
-        .unwrap()
-        .to_vec();
+// TODO: Add album name & year & track
+async fn build_song_from_video(video: ytextract::Video) -> Result<Song> {
+    let thumbnail = get_thumbnail(&video).await;
 
     let album = Album {
         name: "album".to_string(),
         artist: video.channel().name().to_string(),
         year: None,
-        cover: Some(thumbnail),
+        cover: thumbnail,
     };
 
     Ok(Song {
@@ -119,6 +112,24 @@ async fn create_song_from_video(video: ytextract::Video) -> Result<Song> {
         track: None,
         album,
     })
+}
+
+async fn get_thumbnail(video: &ytextract::Video) -> Option<Vec<u8>> {
+    let thumbnails = video.thumbnails();
+
+    if video.thumbnails().len() < 1 {
+        return None;
+    }
+
+    let thumbnail = &thumbnails.first().unwrap().url.to_string();
+    if let Ok(response) = reqwest::get(thumbnail).await {
+        match response.bytes().await {
+            Ok(bytes) => Some(bytes.to_vec()),
+            Err(_) => None,
+        }
+    } else {
+        None
+    }
 }
 
 fn parse_yt_music_to_yt(url: &str) -> String {
