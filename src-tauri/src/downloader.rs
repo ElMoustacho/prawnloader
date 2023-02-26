@@ -13,9 +13,7 @@ type Queue = Vec<Box<dyn DownloadableSong>>;
 
 // TOOD: Improve events to be more generic when needed
 pub enum Event {
-    AddToQueue(Vec<Song>),
-    RemoveFromQueue(Vec<Song>),
-    ClearQueue,
+    UpdateQueue(Vec<Song>),
     DownloadStarted(Song),
     DownloadComplete(PathBuf),
     ParseError(String),
@@ -37,9 +35,9 @@ pub struct Downloader {
 impl Downloader {
     pub fn new() -> Downloader {
         Downloader {
+            event_manager: Arc::new(Mutex::new(EventManager::new())),
             parser: Parser::new(),
             queue: Vec::new(),
-            event_manager: Arc::new(Mutex::new(EventManager::new())),
             pool: Builder::new().build(),
         }
     }
@@ -67,10 +65,7 @@ impl Downloader {
             i += 1;
         }
 
-        self.event_manager
-            .lock()
-            .unwrap()
-            .emit_event(Event::AddToQueue(self.get_queue_as_songs()));
+        self.emit_queue_update();
 
         Ok(())
     }
@@ -82,10 +77,7 @@ impl Downloader {
 
         self.queue.remove(index);
 
-        self.event_manager
-            .lock()
-            .unwrap()
-            .emit_event(Event::RemoveFromQueue(self.get_queue_as_songs()));
+        self.emit_queue_update();
 
         Ok(())
     }
@@ -93,10 +85,7 @@ impl Downloader {
     pub fn clear_queue(&mut self) {
         self.queue.clear();
 
-        self.event_manager
-            .lock()
-            .unwrap()
-            .emit_event(Event::ClearQueue);
+        self.emit_queue_update();
     }
 
     pub fn get_queue(&self) -> &Queue {
@@ -118,7 +107,10 @@ impl Downloader {
             return Err(());
         }
 
-        let downloadable = self.queue.swap_remove(index);
+        let downloadable = self.queue.remove(index);
+
+        self.emit_queue_update();
+
         self._download(downloadable, dest_folder);
 
         Ok(())
@@ -126,10 +118,7 @@ impl Downloader {
 
     pub fn download_queue(&mut self, dest_folder: &Path) {
         while let Some(downloadable) = self.queue.pop() {
-            self.event_manager
-                .lock()
-                .unwrap()
-                .emit_event(Event::RemoveFromQueue(self.get_queue_as_songs()));
+            self.emit_queue_update();
 
             self._download(downloadable, dest_folder)
         }
@@ -147,6 +136,13 @@ impl Downloader {
                     .emit_event(Event::DownloadComplete(result))
             };
         });
+    }
+
+    fn emit_queue_update(&self) {
+        self.event_manager
+            .lock()
+            .unwrap()
+            .emit_event(Event::UpdateQueue(self.get_queue_as_songs()));
     }
 }
 

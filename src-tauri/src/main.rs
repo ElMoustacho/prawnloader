@@ -63,15 +63,7 @@ fn main() {
                 .lock()
                 .unwrap()
                 .add_callback(move |event| match event {
-                    Event::AddToQueue(queue) | Event::RemoveFromQueue(queue) => {
-                        handle.emit_all("queue_update", queue).unwrap()
-                    }
-
-                    Event::ClearQueue => {
-                        handle
-                            .emit_all("queue_update", Vec::<String>::new())
-                            .unwrap();
-                    }
+                    Event::UpdateQueue(queue) => handle.emit_all("queue_update", queue).unwrap(),
 
                     Event::DownloadComplete(file_location) => {
                         handle.emit_all("download_complete", file_location).unwrap()
