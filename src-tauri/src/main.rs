@@ -37,9 +37,12 @@ async fn clear_queue(state: State<'_, AppState>) -> Result<(), ()> {
 async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
     let download_dir = &download_dir().unwrap();
 
-    let result = state.downloader.lock().await.download(index, download_dir);
-
-    result
+    state
+        .downloader
+        .lock()
+        .await
+        .download(index, download_dir)
+        .map_err(|_| ())
 }
 
 #[tauri::command]

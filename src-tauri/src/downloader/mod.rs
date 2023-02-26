@@ -1,17 +1,15 @@
 use crate::events::EventManager;
 use crate::{music::Song, parser::Parser};
-use anyhow::Result;
+use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
+use queue::*;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use tauri::async_runtime::block_on;
-use threadpool::{Builder, ThreadPool};
 
-type Queue = Vec<Box<dyn DownloadableSong>>;
+mod queue;
 
-// TOOD: Improve events to be more generic when needed
 pub enum Event {
     UpdateQueue(Vec<Song>),
     DownloadStarted(Song),
@@ -29,7 +27,6 @@ pub struct Downloader {
     pub event_manager: Arc<Mutex<EventManager<Event>>>,
     pub parser: Parser,
     queue: Queue,
-    pool: ThreadPool,
 }
 
 impl Downloader {
@@ -38,7 +35,6 @@ impl Downloader {
             event_manager: Arc::new(Mutex::new(EventManager::new())),
             parser: Parser::new(),
             queue: Vec::new(),
-            pool: Builder::new().build(),
         }
     }
 
@@ -53,8 +49,9 @@ impl Downloader {
         let downloadables_vec: Vec<_> = futures.collect().await;
 
         for downloadables in downloadables_vec {
-            if let Ok(mut downloadables) = downloadables {
-                self.queue.append(&mut downloadables);
+            if let Ok(downloadables) = downloadables {
+                self.queue
+                    .append(&mut QueueSong::build_from_vec(downloadables));
             } else {
                 self.event_manager
                     .lock()
@@ -88,54 +85,26 @@ impl Downloader {
         self.emit_queue_update();
     }
 
-    pub fn get_queue(&self) -> &Queue {
-        self.queue.as_ref()
-    }
-
     pub fn get_queue_as_songs(&self) -> Vec<Song> {
         let mut result = Vec::new();
 
         for downloadable in self.queue.iter() {
-            result.push(downloadable.get_song().to_owned());
+            result.push(downloadable.downloadable_song.get_song().to_owned());
         }
 
         result
     }
 
-    pub fn download(&mut self, index: usize, dest_folder: &Path) -> Result<(), ()> {
-        if index >= self.queue.len() {
-            return Err(());
-        }
+    pub fn download(&mut self, index: usize, dest_folder: &Path) -> Result<()> {
+        let downloadable = self.queue.get_mut(index).context("Song not found.")?;
 
-        let downloadable = self.queue.remove(index);
-
-        self.emit_queue_update();
-
-        self._download(downloadable, dest_folder);
-
-        Ok(())
+        downloadable.download(dest_folder.to_owned())
     }
 
     pub fn download_queue(&mut self, dest_folder: &Path) {
-        while let Some(downloadable) = self.queue.pop() {
-            self.emit_queue_update();
-
-            self._download(downloadable, dest_folder)
+        for i in 0..self.queue.len() {
+            _ = self.download(i, dest_folder);
         }
-    }
-
-    fn _download(&self, downloadable: Box<dyn DownloadableSong>, dest_folder: &Path) {
-        let dest_folder = dest_folder.to_path_buf();
-        let event_manager = self.event_manager.clone();
-
-        self.pool.execute(move || {
-            if let Ok(result) = block_on(downloadable.download(dest_folder)) {
-                event_manager
-                    .lock()
-                    .unwrap()
-                    .emit_event(Event::DownloadComplete(result))
-            };
-        });
     }
 
     fn emit_queue_update(&self) {
@@ -143,11 +112,5 @@ impl Downloader {
             .lock()
             .unwrap()
             .emit_event(Event::UpdateQueue(self.get_queue_as_songs()));
-    }
-}
-
-impl Default for Downloader {
-    fn default() -> Self {
-        Self::new()
     }
 }
