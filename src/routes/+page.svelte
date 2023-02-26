@@ -12,11 +12,11 @@
 	onMount(() => {
 		let events: Promise<UnlistenFn>[] = [];
 
-		events.push(listen('queue_update', e => ($queue = e.payload)));
+		events.push(listen('parse_error', e => console.info(`Error parsing url: "${e.payload}"`)));
 
-		events.push(listen('parse_error', e => message(`Error parsing url: "${e.payload}"`)));
-
-		events.push(listen('download_complete', e => message(`Download "${e.payload}" complete!`)));
+		events.push(
+			listen('download_complete', e => console.info(`Download "${e.payload}" complete!`))
+		);
 
 		return () => unlistenAllTauriEvents(events);
 	});
@@ -48,44 +48,71 @@
 			placeholder="Enter one URL per line"
 			rows="10"
 			bind:value={urls} />
-		<button class="button" on:click={addToQueue}> Add to queue </button>
+		<button class="button" on:click={addToQueue}>
+			<span class="icon">
+				<i class="fas fa-plus" />
+			</span>
+			<span>Add to queue</span>
+		</button>
 	</div>
 
 	<div class="column is-5-desktop">
 		<div class="pb-4 is-flex">
-			<button class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}
-				>Download</button>
-			<button class="mx-1 is-flex-grow-1 button is-danger" on:click={clearQueue}
-				>Clear queue</button>
+			<button class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
+				<span class="icon">
+					<i class="fa fa-download" />
+				</span>
+				<span>Download all</span>
+			</button>
+			<button class="mx-1 is-flex-grow-1 button is-danger" on:click={clearQueue}>
+				<span class="icon">
+					<i class="fa fa-trash" />
+				</span>
+				<span>Clear all</span>
+			</button>
 		</div>
 
-		<div class="block box">
+		<div class="block box list has-overflow-ellipsis">
 			{#each $queue as download}
-				<div class="song p-3 is-flex is-align-items-center is-unselectable">
-					<figure class="is-flex-shrink-0 image is-32x32">
-						<img
-							src={download.album.cover
-								? bufferToImg(download.album.cover)
-								: 'https://cdns-images.dzcdn.net/images/cover/2b944b29fc4ab95482da6e968ec03586/500x500-000000-80-0-0.jpg'}
-							alt="" />
-					</figure>
+				<div class="list-item">
+					<div class="list-item-image">
+						<figure class="image is-32x32">
+							<img
+								src={download.album.cover
+									? bufferToImg(download.album.cover)
+									: 'https://cdns-images.dzcdn.net/images/cover/2b944b29fc4ab95482da6e968ec03586/500x500-000000-80-0-0.jpg'}
+								alt="" />
+						</figure>
+					</div>
 
-					<div class="px-3 is-flex-grow-1 is-single-line">
-						<p
-							class="is-size-6 has-text-weight-bold is-single-line"
-							title={download.title}>
-							{download.title}
-						</p>
-
-						<div class="is-flex is-justify-content-space-between">
-							<span class="is-single-line has-text-black-bis"
-								>{download.album.artist}</span>
-							<span class="is-single-line" title={download.album.name}
-								>{download.album.name}</span>
+					<div class="list-item-content">
+						<div class="list-item-title" title={download.title}>{download.title}</div>
+						<div class="list-item-description">
+							<div class="is-flex is-justify-content-space-between">
+								<span title={download.album.name}>{download.album.name}</span>
+								<span
+									title={download.album.artist}
+									class="is-single-line has-text-black-bis"
+									>{download.album.artist}</span>
+							</div>
 						</div>
 					</div>
 
-					<button class="delete" aria-label="delete" />
+					<div class="list-item-controls">
+						<div class="buttons is-right">
+							<!-- TODO: Add actions to buttons -->
+							<button class="button">
+								<span class="icon is-small">
+									<i class="fas fa-download" />
+								</span>
+							</button>
+							<button class="button is-danger">
+								<span class="icon is-small">
+									<i class="fas fa-trash" />
+								</span>
+							</button>
+						</div>
+					</div>
 				</div>
 			{:else}
 				<h2 class="subtitle has-text-centered">You have no song in the queue</h2>
@@ -104,14 +131,6 @@
 		overflow-x: auto;
 		resize: none;
 		scrollbar-width: thin;
-	}
-
-	.song {
-		border-radius: 5px;
-
-		&:hover {
-			background-color: $light;
-		}
 	}
 
 	// DEBUG: Max height
