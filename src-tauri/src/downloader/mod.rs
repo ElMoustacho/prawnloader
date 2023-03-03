@@ -2,6 +2,7 @@ use crate::events::EventManager;
 use crate::{music::Song, parser::Parser};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use futures::executor::block_on;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use queue::*;
@@ -89,21 +90,52 @@ impl Downloader {
         let mut result = Vec::new();
 
         for downloadable in self.queue.iter() {
-            result.push(downloadable.downloadable_song.get_song().to_owned());
+            result.push(
+                block_on(downloadable.lock())
+                    .downloadable_song
+                    .get_song()
+                    .to_owned(),
+            );
         }
 
         result
     }
 
-    pub fn download(&mut self, index: usize, dest_folder: &Path) -> Result<()> {
-        let downloadable = self.queue.get_mut(index).context("Song not found.")?;
+    pub fn download(&mut self, index: usize, dest_folder: &Path) {
+        let queue_item = self.queue.get_mut(index).context("Song not found.");
+        let queue_item = if let Ok(x) = queue_item { x } else { return };
 
-        downloadable.download(dest_folder.to_owned())
+        if block_on(queue_item.lock()).downloaded {
+            return;
+        };
+
+        let queue_item = Arc::clone(&queue_item);
+        let dest_folder = dest_folder.to_owned();
+        let event_manager = Arc::clone(&self.event_manager);
+
+        block_on(queue_item.lock()).download_handle = {
+            let queue_item = Arc::clone(&queue_item);
+            Some(tokio::spawn(async move {
+                let result = queue_item
+                    .lock()
+                    .await
+                    .downloadable_song
+                    .download(dest_folder.clone())
+                    .await;
+
+                event_manager
+                    .lock()
+                    .unwrap()
+                    .emit_event(Event::DownloadComplete(dest_folder));
+
+                result
+            }))
+        };
     }
 
     pub fn download_queue(&mut self, dest_folder: &Path) {
         for i in 0..self.queue.len() {
-            _ = self.download(i, dest_folder);
+            self.download(i, dest_folder);
         }
     }
 
