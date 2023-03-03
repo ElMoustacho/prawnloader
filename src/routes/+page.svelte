@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-	import { confirm, message } from '@tauri-apps/api/dialog';
+	import { confirm } from '@tauri-apps/api/dialog';
 	import { onMount } from 'svelte';
-	import bufferToImg from '$lib/ts/bufferToImg';
 	import unlistenAllTauriEvents from '$lib/ts/unlistenAllTauriEvents';
 	import { queue } from '$lib/ts/stores';
+	import QueueItem from './QueueItem.svelte';
 
 	let urls = '';
 
@@ -73,47 +73,8 @@
 		</div>
 
 		<div class="block box list has-overflow-ellipsis">
-			{#each $queue as download}
-				<div class="list-item">
-					<div class="list-item-image">
-						<figure class="image is-32x32">
-							<img
-								src={download.album.cover
-									? bufferToImg(download.album.cover)
-									: 'https://cdns-images.dzcdn.net/images/cover/2b944b29fc4ab95482da6e968ec03586/500x500-000000-80-0-0.jpg'}
-								alt="" />
-						</figure>
-					</div>
-
-					<div class="list-item-content">
-						<div class="list-item-title" title={download.title}>{download.title}</div>
-						<div class="list-item-description">
-							<div class="is-flex is-justify-content-space-between">
-								<span title={download.album.name}>{download.album.name}</span>
-								<span
-									title={download.album.artist}
-									class="is-single-line has-text-black-bis"
-									>{download.album.artist}</span>
-							</div>
-						</div>
-					</div>
-
-					<div class="list-item-controls">
-						<div class="buttons is-right">
-							<!-- TODO: Add actions to buttons -->
-							<button class="button">
-								<span class="icon is-small">
-									<i class="fas fa-download" />
-								</span>
-							</button>
-							<button class="button is-danger">
-								<span class="icon is-small">
-									<i class="fas fa-trash" />
-								</span>
-							</button>
-						</div>
-					</div>
-				</div>
+			{#each $queue as queueItem}
+				<QueueItem {queueItem} />
 			{:else}
 				<h2 class="subtitle has-text-centered">You have no song in the queue</h2>
 			{/each}
