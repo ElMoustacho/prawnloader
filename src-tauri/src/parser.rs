@@ -1,4 +1,4 @@
-use crate::{downloader::DownloadableSong, youtube::YoutubeParser};
+use crate::downloader::DownloadableSong;
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 
@@ -21,21 +21,10 @@ pub struct Parser {
 
 impl Parser {
     /**
-    Create a new `Parser` with a default list of parsers.
+    Create a new `Parser`.
     */
-    pub fn new() -> Parser {
-        Parser {
-            parsers: vec![Box::new(YoutubeParser::new())],
-        }
-    }
-
-    /**
-    Create a new `Parser` with a custom list of parsers.
-    */
-    pub fn from(parsers: Vec<Box<dyn SongParser>>) -> Parser {
-        Parser {
-            parsers: Vec::from(parsers),
-        }
+    pub fn new(parsers: Vec<Box<dyn SongParser>>) -> Parser {
+        Parser { parsers }
     }
 
     /**

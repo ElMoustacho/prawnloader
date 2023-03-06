@@ -153,7 +153,7 @@ mod tests {
 
     #[tokio::test]
     async fn video_parse() {
-        let parser = Parser::from(vec![Box::new(YoutubeParser::new())]);
+        let parser = Parser::new(vec![Box::new(YoutubeParser::new())]);
 
         parser
             .parse_url(&String::from("https://www.youtube.com/watch?v=ORofRTMg-iY"))
@@ -170,7 +170,7 @@ mod tests {
 
     #[tokio::test]
     async fn playlist_parse() {
-        let parser = Parser::from(vec![Box::new(YoutubeParser::new())]);
+        let parser = Parser::new(vec![Box::new(YoutubeParser::new())]);
 
         parser
             .parse_url(&String::from(
