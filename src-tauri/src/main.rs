@@ -36,12 +36,7 @@ async fn clear_queue(state: State<'_, AppState>) -> Result<(), ()> {
 async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
     let download_dir = &download_dir().unwrap();
 
-    state
-        .downloader
-        .lock()
-        .await
-        .download(index, download_dir)
-        .await;
+    state.downloader.lock().await.download(index, download_dir);
 
     Ok(())
 }

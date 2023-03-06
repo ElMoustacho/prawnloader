@@ -1,23 +1,18 @@
-use crate::youtube::YoutubeParser;
-use crate::{music::Song, parser::Parser};
+use anyhow::Context;
 use anyhow::Result;
-use async_trait::async_trait;
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use queue::*;
 use std::path::{Path, PathBuf};
 
-mod queue;
+use crate::youtube::YoutubeParser;
+use crate::{music::Song, parser::Parser};
+
+pub(crate) mod queue;
 
 pub enum Event {
     UpdateQueue(SerializableQueue),
     DownloadStarted(Song),
     DownloadComplete(PathBuf),
-}
-
-#[async_trait]
-pub trait DownloadableSong: Send + Sync {
-    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf>;
-    fn get_song(&self) -> &Song;
 }
 
 pub struct Downloader {
@@ -47,7 +42,7 @@ impl Downloader {
         let downloadables = self.parser.parse_url(&url.into()).await?;
 
         for downloadable in downloadables {
-            self.queue.push(QueueSong::new(downloadable));
+            self.queue.push(downloadable);
         }
 
         self.emit_queue_update();
@@ -73,37 +68,38 @@ impl Downloader {
         self.emit_queue_update();
     }
 
-    pub async fn download(&mut self, index: usize, dest_folder: &Path) {
-        // let queue_item = self.queue.get_mut(index).context("Song not found.");
-        // let queue_item = if let Ok(x) = queue_item { x } else { return };
+    pub fn download(&mut self, index: usize, dest_folder: &Path) {
+        let queue_song = self.queue.get_mut(index).context("Song not found.");
+        let queue_song = if let Ok(x) = queue_song { x } else { return };
 
-        // if queue_item.downloaded {
-        //     return;
-        // };
+        if queue_song.downloaded {
+            return;
+        };
 
-        // let dest_folder = dest_folder.to_owned();
-        // let event_sender = self.event_sender.clone();
+        let dest_folder = dest_folder.to_owned();
+        let event_sender = self.event_sender.clone();
+        let dl_fun = queue_song.download_fun;
+        let url = queue_song.url.clone();
 
-        // queue_item.download_handle = {
-        //     Some(tokio::spawn(async move {
-        //         let result = queue_item
-        //             .downloadable_song
-        //             .download(dest_folder.clone())
-        //             .await;
+        queue_song.download_handle = Some(tokio::spawn(async move {
+            let result = dl_fun(&url, dest_folder.clone()).await;
 
-        //         event_sender.send(Event::DownloadComplete(dest_folder));
+            event_sender
+                .send(Event::DownloadComplete(dest_folder))
+                .expect("Channel should be connected.");
 
-        //         result
-        //     }))
-        // };
+            result
+        }));
     }
 
     fn emit_queue_update(&self) {
-        self.event_sender.send(Event::UpdateQueue(
-            self.queue
-                .iter()
-                .map(|song| song.get_serializable())
-                .collect(),
-        ));
+        self.event_sender
+            .send(Event::UpdateQueue(
+                self.queue
+                    .iter()
+                    .map(|song| song.get_serializable())
+                    .collect(),
+            ))
+            .expect("Channel should be connected.");
     }
 }

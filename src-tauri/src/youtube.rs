@@ -1,15 +1,17 @@
-use crate::parser::{ParserResult, SongParser};
-use crate::{
-    downloader::DownloadableSong,
-    music::{Album, Song},
-};
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::stream::FuturesOrdered;
-use futures::StreamExt;
+use futures::{Future, StreamExt};
 use regex::Regex;
+use reqwest::Url;
 use rustube::Video;
 use std::path::PathBuf;
+use std::pin::Pin;
+use std::str::FromStr;
+
+use crate::downloader::queue::{Queue, QueueSong};
+use crate::music::{Album, Song};
+use crate::parser::{ParserResult, SongParser};
 
 pub(crate) struct YoutubeParser {
     ytextract_client: ytextract::Client,
@@ -22,20 +24,18 @@ impl YoutubeParser {
         }
     }
 
-    async fn parse_video(&self, id: ytextract::video::Id) -> Result<YoutubeDownloadable> {
+    async fn parse_video(&self, id: ytextract::video::Id) -> Result<Song> {
         let video = self.ytextract_client.video(id).await?;
         let song = build_song_from_video(video).await?;
 
-        let id = rustube::Id::from_raw(&id)?.as_owned();
-
-        Ok(YoutubeDownloadable { song, id })
+        Ok(song)
     }
 
     async fn parse_video_url(&self, url: &String) -> ParserResult {
         let id = url.parse::<ytextract::video::Id>()?;
-        let video = self.parse_video(id).await?;
+        let song = self.parse_video(id).await?;
 
-        Ok(vec![Box::new(video)])
+        Ok(vec![build_queue_song(song, url.to_string())])
     }
 
     async fn parse_playlist_url(&self, url: &String) -> ParserResult {
@@ -55,10 +55,10 @@ impl YoutubeParser {
             futures.push_back(self.parse_video(video.id()));
         }
 
-        let filtered_parses: Vec<Box<dyn DownloadableSong>> = futures
+        let filtered_parses: Queue = futures
             .filter_map(|result| async {
-                if let Ok(result) = result {
-                    Some(Box::new(result) as _)
+                if let Ok(song) = result {
+                    Some(build_queue_song(song, url.to_string()))
                 } else {
                     None
                 }
@@ -81,28 +81,29 @@ impl SongParser for YoutubeParser {
     }
 }
 
-pub(crate) struct YoutubeDownloadable {
-    song: Song,
-    id: rustube::IdBuf,
+fn build_queue_song(song: Song, url: String) -> QueueSong {
+    // QueueSong::new(song, url, { |url, dest_folder| Box::pin(download(url, dest_folder)) as _ })
+    QueueSong::new(song, url, wrapped_download)
 }
 
-#[async_trait]
-impl DownloadableSong for YoutubeDownloadable {
-    async fn download(&self, dest_folder: PathBuf) -> Result<PathBuf> {
-        let video = Video::from_id(self.id.to_owned()).await?;
+fn wrapped_download(
+    url: &str,
+    dest_folder: PathBuf,
+) -> Pin<Box<dyn Future<Output = Result<PathBuf>> + Send + '_>> {
+    Box::pin(download(url, dest_folder))
+}
 
-        video
-            .best_audio()
-            .unwrap()
-            .download_to_dir(dest_folder.clone())
-            .await?;
+async fn download(url: &str, dest_folder: PathBuf) -> Result<PathBuf> {
+    let url = Url::from_str(url)?;
+    let video = Video::from_url(&url).await?;
 
-        Ok(dest_folder)
-    }
+    video
+        .best_audio()
+        .unwrap()
+        .download_to_dir(dest_folder.clone())
+        .await?;
 
-    fn get_song(&self) -> &Song {
-        &self.song
-    }
+    Ok(dest_folder)
 }
 
 // TODO: Add album name & year & track

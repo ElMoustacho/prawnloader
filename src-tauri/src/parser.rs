@@ -1,8 +1,9 @@
-use crate::downloader::DownloadableSong;
 use anyhow::{bail, Result};
 use async_trait::async_trait;
 
-pub type ParserResult = Result<Vec<Box<dyn DownloadableSong>>>;
+use crate::downloader::queue::Queue;
+
+pub type ParserResult = Result<Queue>;
 
 /**
 A parser used to transform URLs into downloadable songs with metadata.
