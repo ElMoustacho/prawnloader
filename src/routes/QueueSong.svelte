@@ -1,28 +1,28 @@
 <script lang="ts">
-	import type { Song } from 'src/types/music';
+	import type { QueueSong } from 'src/types/music';
 	import bufferToImg from '$lib/ts/bufferToImg';
 
-	export let queueItem: Song;
+	export let queueSong: QueueSong;
 </script>
 
 <div class="list-item">
 	<div class="list-item-image">
 		<figure class="image is-32x32">
 			<img
-				src={queueItem.album.cover
-					? bufferToImg(queueItem.album.cover)
+				src={queueSong.song.album.cover
+					? bufferToImg(queueSong.song.album.cover)
 					: 'https://cdns-images.dzcdn.net/images/cover/2b944b29fc4ab95482da6e968ec03586/500x500-000000-80-0-0.jpg'}
 				alt="" />
 		</figure>
 	</div>
 
 	<div class="list-item-content">
-		<div class="list-item-title" title={queueItem.title}>{queueItem.title}</div>
+		<div class="list-item-title" title={queueSong.song.title}>{queueSong.song.title}</div>
 		<div class="list-item-description">
 			<div class="is-flex is-justify-content-space-between">
-				<span title={queueItem.album.name}>{queueItem.album.name}</span>
-				<span title={queueItem.album.artist} class="is-single-line has-text-black-bis"
-					>{queueItem.album.artist}</span>
+				<span title={queueSong.song.album.name}>{queueSong.song.album.name}</span>
+				<span title={queueSong.song.album.artist} class="is-single-line has-text-black-bis"
+					>{queueSong.song.album.artist}</span>
 			</div>
 		</div>
 	</div>

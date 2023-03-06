@@ -5,7 +5,7 @@
 	import { onMount } from 'svelte';
 	import unlistenAllTauriEvents from '$lib/ts/unlistenAllTauriEvents';
 	import { queue } from '$lib/ts/stores';
-	import QueueItem from './QueueItem.svelte';
+	import QueueSong from './QueueSong.svelte';
 
 	let urls = '';
 
@@ -22,14 +22,17 @@
 	});
 
 	function addToQueue() {
-		const _urls = urls.trim().split('\n');
-		invoke('add_to_queue', { urls: _urls });
+		urls.trim()
+			.split('\n')
+			.forEach(url => invoke('add_to_queue', { url }));
 
 		urls = '';
 	}
 
 	function downloadQueue() {
-		invoke('download_queue', {});
+		for (let i = 0; i < $queue.length; i++) {
+			invoke('download', { index: i });
+		}
 	}
 
 	async function clearQueue() {
@@ -73,8 +76,8 @@
 		</div>
 
 		<div class="block box list has-overflow-ellipsis">
-			{#each $queue as queueItem}
-				<QueueItem {queueItem} />
+			{#each $queue as queueSong}
+				<QueueSong {queueSong} />
 			{:else}
 				<h2 class="subtitle has-text-centered">You have no song in the queue</h2>
 			{/each}

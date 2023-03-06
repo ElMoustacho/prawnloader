@@ -1,33 +1,44 @@
 use anyhow::Result;
-use std::{path::PathBuf, sync::Arc};
-use tokio::{sync::Mutex, task::JoinHandle};
+use serde::Serialize;
+use std::path::PathBuf;
+use tokio::task::JoinHandle;
+
+use crate::music::Song;
 
 use super::DownloadableSong;
 
-pub(super) type Queue = Vec<Arc<Mutex<QueueSong>>>;
+pub(super) type Queue = Vec<QueueSong>;
+pub(super) type SerializableQueue = Vec<SerializableQueueSong>;
 
-pub(super) struct QueueSong {
-    pub downloadable_song: Box<dyn DownloadableSong>,
+pub struct QueueSong {
+    pub(super) downloadable_song: Box<dyn DownloadableSong>,
     pub(super) downloaded: bool,
     pub(super) download_handle: Option<JoinHandle<Result<PathBuf>>>,
+    pub(super) progress: i8,
 }
 
 impl QueueSong {
-    pub fn build(downloadable_song: Box<dyn DownloadableSong>) -> Self {
+    pub fn new(downloadable_song: Box<dyn DownloadableSong>) -> Self {
         Self {
             downloadable_song,
             downloaded: false,
             download_handle: None,
+            progress: 0,
         }
     }
 
-    pub fn build_from_vec(mut downloadable_songs: Vec<Box<dyn DownloadableSong>>) -> Queue {
-        let mut result = Vec::new();
-
-        while let Some(downloadable_song) = downloadable_songs.pop() {
-            result.push(Arc::new(Mutex::new(Self::build(downloadable_song))));
+    pub fn get_serializable(&self) -> SerializableQueueSong {
+        SerializableQueueSong {
+            song: self.downloadable_song.get_song().clone(),
+            downloaded: self.downloaded,
+            progress: self.progress,
         }
-
-        result
     }
+}
+
+#[derive(Clone, Serialize)]
+pub struct SerializableQueueSong {
+    pub(super) song: Song,
+    pub(super) downloaded: bool,
+    pub(super) progress: i8,
 }

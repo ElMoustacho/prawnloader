@@ -2,9 +2,6 @@ use crate::events::EventManager;
 use crate::{music::Song, parser::Parser};
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use futures::executor::block_on;
-use futures::stream::FuturesOrdered;
-use futures::StreamExt;
 use queue::*;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
@@ -12,10 +9,9 @@ use std::sync::{Arc, Mutex};
 mod queue;
 
 pub enum Event {
-    UpdateQueue(Vec<Song>),
+    UpdateQueue(SerializableQueue),
     DownloadStarted(Song),
     DownloadComplete(PathBuf),
-    ParseError(String),
 }
 
 #[async_trait]
@@ -39,28 +35,11 @@ impl Downloader {
         }
     }
 
-    pub async fn add_to_queue(&mut self, urls: Vec<String>) -> Result<(), ()> {
-        let mut i = 0;
-        let mut futures = FuturesOrdered::new();
+    pub async fn add_to_queue(&mut self, url: String) -> Result<()> {
+        let downloadables = self.parser.parse_url(&url.into()).await?;
 
-        for url in urls.clone() {
-            futures.push_back(async { self.parser.parse_url(&url.into()).await });
-        }
-
-        let downloadables_vec: Vec<_> = futures.collect().await;
-
-        for downloadables in downloadables_vec {
-            if let Ok(downloadables) = downloadables {
-                self.queue
-                    .append(&mut QueueSong::build_from_vec(downloadables));
-            } else {
-                self.event_manager
-                    .lock()
-                    .unwrap()
-                    .emit_event(Event::ParseError(urls[i].clone()))
-            }
-
-            i += 1;
+        for downloadable in downloadables {
+            self.queue.push(QueueSong::new(downloadable));
         }
 
         self.emit_queue_update();
@@ -86,39 +65,20 @@ impl Downloader {
         self.emit_queue_update();
     }
 
-    pub fn get_queue_as_songs(&self) -> Vec<Song> {
-        let mut result = Vec::new();
-
-        for downloadable in self.queue.iter() {
-            result.push(
-                block_on(downloadable.lock())
-                    .downloadable_song
-                    .get_song()
-                    .to_owned(),
-            );
-        }
-
-        result
-    }
-
-    pub fn download(&mut self, index: usize, dest_folder: &Path) {
+    pub async fn download(&mut self, index: usize, dest_folder: &Path) {
         let queue_item = self.queue.get_mut(index).context("Song not found.");
         let queue_item = if let Ok(x) = queue_item { x } else { return };
 
-        if block_on(queue_item.lock()).downloaded {
+        if queue_item.downloaded {
             return;
         };
 
-        let queue_item = Arc::clone(&queue_item);
         let dest_folder = dest_folder.to_owned();
         let event_manager = Arc::clone(&self.event_manager);
 
-        block_on(queue_item.lock()).download_handle = {
-            let queue_item = Arc::clone(&queue_item);
+        queue_item.download_handle = {
             Some(tokio::spawn(async move {
                 let result = queue_item
-                    .lock()
-                    .await
                     .downloadable_song
                     .download(dest_folder.clone())
                     .await;
@@ -133,16 +93,15 @@ impl Downloader {
         };
     }
 
-    pub fn download_queue(&mut self, dest_folder: &Path) {
-        for i in 0..self.queue.len() {
-            self.download(i, dest_folder);
-        }
-    }
-
     fn emit_queue_update(&self) {
         self.event_manager
             .lock()
             .unwrap()
-            .emit_event(Event::UpdateQueue(self.get_queue_as_songs()));
+            .emit_event(Event::UpdateQueue(
+                self.queue
+                    .iter()
+                    .map(|song| song.get_serializable())
+                    .collect(),
+            ));
     }
 }

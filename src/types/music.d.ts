@@ -10,3 +10,9 @@ export interface Song {
 	track: number | null;
 	album: Album;
 }
+
+export interface QueueSong {
+	song: Song;
+	progress: number;
+	downloaded: boolean;
+}

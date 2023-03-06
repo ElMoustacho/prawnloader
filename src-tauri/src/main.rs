@@ -12,10 +12,10 @@ struct AppState {
 }
 
 #[tauri::command]
-async fn add_to_queue(urls: Vec<String>, state: State<'_, AppState>) -> Result<(), ()> {
-    let result = state.downloader.lock().await.add_to_queue(urls).await;
+async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), String> {
+    let result = state.downloader.lock().await.add_to_queue(url).await;
 
-    result
+    result.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -29,28 +29,19 @@ async fn remove_from_queue(id: usize, state: State<'_, AppState>) -> Result<(), 
 async fn clear_queue(state: State<'_, AppState>) -> Result<(), ()> {
     state.downloader.lock().await.clear_queue();
 
-    println!("Clearing queue!");
-
     Ok(())
 }
 
-// #[tauri::command]
-// async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
-//     let download_dir = &download_dir().unwrap();
-
-//     state
-//         .downloader
-//         .lock()
-//         .await
-//         .download(index, download_dir)
-//         .map_err(|_| ())
-// }
-
 #[tauri::command]
-async fn download_queue(state: State<'_, AppState>) -> Result<(), ()> {
+async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
     let download_dir = &download_dir().unwrap();
 
-    state.downloader.lock().await.download_queue(download_dir);
+    state
+        .downloader
+        .lock()
+        .await
+        .download(index, download_dir)
+        .await;
 
     Ok(())
 }
@@ -76,8 +67,6 @@ fn main() {
                     Event::DownloadStarted(song) => {
                         handle.emit_all("download_started", song).unwrap()
                     }
-
-                    Event::ParseError(url) => handle.emit_all("parse_error", url).unwrap(),
                 });
 
             app.manage(AppState {
@@ -89,8 +78,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             add_to_queue,
             remove_from_queue,
-            // download,
-            download_queue,
+            download,
             clear_queue
         ])
         .run(tauri::generate_context!())
