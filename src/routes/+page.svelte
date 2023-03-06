@@ -12,8 +12,6 @@
 	onMount(() => {
 		let events: Promise<UnlistenFn>[] = [];
 
-		events.push(listen('parse_error', e => console.info(`Error parsing url: "${e.payload}"`)));
-
 		events.push(
 			listen('download_complete', e => console.info(`Download "${e.payload}" complete!`))
 		);

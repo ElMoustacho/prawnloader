@@ -52,22 +52,25 @@ fn main() {
             let downloader = downloader::Downloader::new();
 
             let handle = app.handle();
+            let receiver = downloader.get_event_receiver();
 
-            downloader
-                .event_manager
-                .lock()
-                .unwrap()
-                .add_callback(move |event| match event {
-                    Event::UpdateQueue(queue) => handle.emit_all("queue_update", queue).unwrap(),
+            std::thread::spawn(move || {
+                while let Ok(event) = receiver.recv() {
+                    match event {
+                        Event::UpdateQueue(queue) => {
+                            handle.emit_all("queue_update", queue).unwrap()
+                        }
 
-                    Event::DownloadComplete(file_location) => {
-                        handle.emit_all("download_complete", file_location).unwrap()
-                    }
+                        Event::DownloadComplete(file_location) => {
+                            handle.emit_all("download_complete", file_location).unwrap()
+                        }
 
-                    Event::DownloadStarted(song) => {
-                        handle.emit_all("download_started", song).unwrap()
-                    }
-                });
+                        Event::DownloadStarted(song) => {
+                            handle.emit_all("download_started", song).unwrap()
+                        }
+                    };
+                }
+            });
 
             app.manage(AppState {
                 downloader: Mutex::new(downloader),
