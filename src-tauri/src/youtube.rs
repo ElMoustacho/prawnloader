@@ -83,27 +83,25 @@ impl SongParser for YoutubeParser {
 
 fn build_queue_song(song: Song, url: String) -> QueueSong {
     // QueueSong::new(song, url, { |url, dest_folder| Box::pin(download(url, dest_folder)) as _ })
-    QueueSong::new(song, url, wrapped_download)
+    QueueSong::new(song, url, download)
 }
 
-fn wrapped_download(
+fn download(
     url: &str,
     dest_folder: PathBuf,
 ) -> Pin<Box<dyn Future<Output = Result<PathBuf>> + Send + '_>> {
-    Box::pin(download(url, dest_folder))
-}
+    Box::pin(async {
+        let url = Url::from_str(url)?;
+        let video = Video::from_url(&url).await?;
 
-async fn download(url: &str, dest_folder: PathBuf) -> Result<PathBuf> {
-    let url = Url::from_str(url)?;
-    let video = Video::from_url(&url).await?;
+        video
+            .best_audio()
+            .unwrap()
+            .download_to_dir(dest_folder.clone())
+            .await?;
 
-    video
-        .best_audio()
-        .unwrap()
-        .download_to_dir(dest_folder.clone())
-        .await?;
-
-    Ok(dest_folder)
+        Ok(dest_folder)
+    })
 }
 
 // TODO: Add album name & year & track
