@@ -26,7 +26,7 @@ impl YoutubeParser {
 
     async fn parse_video(&self, id: ytextract::video::Id) -> Result<Song> {
         let video = self.ytextract_client.video(id).await?;
-        let song = build_song_from_video(video).await?;
+        let song = build_song_from_video(video).await;
 
         Ok(song)
     }
@@ -104,8 +104,9 @@ fn download(
     })
 }
 
+/// Creates a new `Song` instance from a `ytextract::Video`.
 // TODO: Add album name & year & track
-async fn build_song_from_video(video: ytextract::Video) -> Result<Song> {
+async fn build_song_from_video(video: ytextract::Video) -> Song {
     let thumbnail = get_thumbnail(&video).await;
 
     let album = Album {
@@ -115,13 +116,14 @@ async fn build_song_from_video(video: ytextract::Video) -> Result<Song> {
         cover: thumbnail,
     };
 
-    Ok(Song {
+    Song {
         title: video.title().to_string(),
         track: None,
         album,
-    })
+    }
 }
 
+/// Gets a thumbnail from a video as a vector of bytes.
 async fn get_thumbnail(video: &ytextract::Video) -> Option<Vec<u8>> {
     let thumbnails = video.thumbnails();
 
@@ -140,6 +142,7 @@ async fn get_thumbnail(video: &ytextract::Video) -> Option<Vec<u8>> {
     }
 }
 
+/// Changes a music.youtube.com url to a www.youtube.com url.
 fn parse_yt_music_to_yt(url: &str) -> String {
     let regex = Regex::new(r"(?P<before>https?://)?music(?P<after>\.youtube\.com.*)").unwrap();
     regex.replace_all(url, "${before}www${after}").to_string()
