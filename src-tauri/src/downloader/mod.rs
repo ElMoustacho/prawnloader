@@ -68,28 +68,12 @@ impl Downloader {
         self.emit_queue_update();
     }
 
-    pub fn download(&mut self, index: usize, dest_folder: &Path) {
-        let queue_song = self.queue.get_mut(index).context("Song not found.");
-        let queue_song = if let Ok(x) = queue_song { x } else { return };
+    pub fn start_download(&mut self, index: usize, dest_folder: &Path) -> Result<()> {
+        let queue_song = self.queue.get_mut(index).context("Song not found.")?;
 
-        if queue_song.downloaded {
-            return;
-        };
+        queue_song.start_download(dest_folder.to_owned(), self.event_sender.clone());
 
-        let dest_folder = dest_folder.to_owned();
-        let event_sender = self.event_sender.clone();
-        let dl_fun = queue_song.download_fun;
-        let url = queue_song.url.clone();
-
-        queue_song.download_handle = Some(tokio::spawn(async move {
-            let result = dl_fun(&url, dest_folder.clone()).await;
-
-            event_sender
-                .send(Event::DownloadComplete(dest_folder))
-                .expect("Channel should be connected.");
-
-            result
-        }));
+        Ok(())
     }
 
     fn emit_queue_update(&self) {
