@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { QueueSong } from 'src/types/music';
 	import bufferToImg from '$lib/ts/bufferToImg';
+	import { invoke } from '@tauri-apps/api';
 
 	export let queueSong: QueueSong;
 </script>
@@ -29,13 +30,14 @@
 
 	<div class="list-item-controls">
 		<div class="buttons is-right">
-			<!-- TODO: Add actions to buttons -->
-			<button class="button">
+			<button class="button" on:click={() => invoke('download', { id: queueSong.id })}>
 				<span class="icon is-small">
 					<i class="fas fa-download" />
 				</span>
 			</button>
-			<button class="button is-danger">
+			<button
+				class="button is-danger"
+				on:click={() => invoke('remove_from_queue', { id: queueSong.id })}>
 				<span class="icon is-small">
 					<i class="fas fa-trash" />
 				</span>

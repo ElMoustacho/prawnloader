@@ -33,15 +33,28 @@ async fn clear_queue(state: State<'_, AppState>) -> Result<(), ()> {
 }
 
 #[tauri::command]
-async fn download(index: usize, state: State<'_, AppState>) -> Result<(), String> {
+async fn download(id: usize, state: State<'_, AppState>) -> Result<(), String> {
     let download_dir = &download_dir().unwrap();
 
     state
         .downloader
         .lock()
         .await
-        .start_download(index, download_dir)
+        .start_download(id, download_dir)
         .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn download_queue(state: State<'_, AppState>) -> Result<(), String> {
+    let download_dir = &download_dir().unwrap();
+
+    state
+        .downloader
+        .lock()
+        .await
+        .start_download_queue(download_dir);
+
+    Ok(())
 }
 
 fn main() {
@@ -79,8 +92,9 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             add_to_queue,
             remove_from_queue,
+            clear_queue,
             download,
-            clear_queue
+            download_queue,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

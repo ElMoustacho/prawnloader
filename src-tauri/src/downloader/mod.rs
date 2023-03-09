@@ -50,12 +50,8 @@ impl Downloader {
         Ok(())
     }
 
-    pub fn remove_from_queue(&mut self, index: usize) -> Result<(), ()> {
-        if self.queue.len() <= index {
-            return Err(());
-        }
-
-        self.queue.remove(index);
+    pub fn remove_from_queue(&mut self, index: Id) -> Result<(), ()> {
+        self.queue.retain(|song| song.id != index);
 
         self.emit_queue_update();
 
@@ -69,11 +65,21 @@ impl Downloader {
     }
 
     pub fn start_download(&mut self, index: usize, dest_folder: &Path) -> Result<()> {
-        let queue_song = self.queue.get_mut(index).context("Song not found.")?;
+        let queue_song = self
+            .queue
+            .iter_mut()
+            .find(|song| song.id == index)
+            .context("Song not found.")?;
 
         queue_song.start_download(dest_folder.to_owned(), self.event_sender.clone());
 
         Ok(())
+    }
+
+    pub fn start_download_queue(&mut self, dest_folder: &Path) {
+        for song in self.queue.iter_mut() {
+            song.start_download(dest_folder.to_owned(), self.event_sender.clone());
+        }
     }
 
     fn emit_queue_update(&self) {

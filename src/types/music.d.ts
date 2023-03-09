@@ -12,7 +12,7 @@ export interface Song {
 }
 
 export interface QueueSong {
+	id: number,
 	song: Song;
 	progress: number;
-	downloaded: boolean;
 }

@@ -28,9 +28,7 @@
 	}
 
 	function downloadQueue() {
-		for (let i = 0; i < $queue.length; i++) {
-			invoke('download', { index: i });
-		}
+		invoke('download_queue', {});
 	}
 
 	async function clearQueue() {
