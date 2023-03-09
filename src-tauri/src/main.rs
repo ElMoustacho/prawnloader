@@ -33,12 +33,15 @@ async fn clear_queue(state: State<'_, AppState>) -> Result<(), ()> {
 }
 
 #[tauri::command]
-async fn download(index: usize, state: State<'_, AppState>) -> Result<(), ()> {
+async fn download(index: usize, state: State<'_, AppState>) -> Result<(), String> {
     let download_dir = &download_dir().unwrap();
 
-    state.downloader.lock().await.download(index, download_dir);
-
-    Ok(())
+    state
+        .downloader
+        .lock()
+        .await
+        .start_download(index, download_dir)
+        .map_err(|e| e.to_string())
 }
 
 fn main() {
