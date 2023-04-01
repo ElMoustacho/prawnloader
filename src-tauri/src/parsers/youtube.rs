@@ -9,9 +9,9 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::str::FromStr;
 
+use super::{ParserResult, SongParser};
 use crate::downloader::queue::{Queue, QueueSong};
 use crate::music::{Album, Song};
-use crate::parser::{ParserResult, SongParser};
 
 pub(crate) struct YoutubeParser {
     ytextract_client: ytextract::Client,
@@ -147,7 +147,7 @@ fn parse_yt_music_to_yt(url: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::Parser;
+    use crate::parsers::Parser;
 
     #[tokio::test]
     async fn video_parse() {

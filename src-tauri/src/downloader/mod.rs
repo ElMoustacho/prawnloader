@@ -4,8 +4,7 @@ use crossbeam::channel::{unbounded, Receiver, Sender};
 use queue::*;
 use std::path::{Path, PathBuf};
 
-use crate::youtube::YoutubeParser;
-use crate::{music::Song, parser::Parser};
+use crate::{music::Song, parsers::youtube::YoutubeParser, parsers::Parser};
 
 pub(crate) mod queue;
 
