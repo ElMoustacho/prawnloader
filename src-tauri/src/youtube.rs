@@ -24,18 +24,18 @@ impl YoutubeParser {
         }
     }
 
-    async fn parse_video(&self, id: ytextract::video::Id) -> Result<Song> {
+    async fn parse_video(&self, id: ytextract::video::Id, track: Option<u16>) -> Result<Song> {
         let video = self.ytextract_client.video(id).await?;
-        let song = build_song_from_video(video).await;
+        let song = build_song_from_video(video, track).await;
 
         Ok(song)
     }
 
     async fn parse_video_url(&self, url: &String) -> ParserResult {
         let id = url.parse::<ytextract::video::Id>()?;
-        let song = self.parse_video(id).await?;
+        let song = self.parse_video(id, None).await?;
 
-        Ok(vec![build_queue_song(song, url.to_string())])
+        Ok(vec![QueueSong::new(song, url.to_string(), download)])
     }
 
     async fn parse_playlist_url(&self, url: &String) -> ParserResult {
@@ -45,6 +45,7 @@ impl YoutubeParser {
             .await?
             .videos();
 
+        let mut track_counter: u16 = 1;
         let mut futures = FuturesOrdered::new();
 
         futures::pin_mut!(videos);
@@ -52,13 +53,15 @@ impl YoutubeParser {
         while let Some(video) = videos.next().await {
             let Ok(video) = video else { continue };
 
-            futures.push_back(self.parse_video(video.id()));
+            futures.push_back(self.parse_video(video.id(), Some(track_counter)));
+
+            track_counter += 1;
         }
 
         let filtered_parses: Queue = futures
             .filter_map(|result| async {
                 if let Ok(song) = result {
-                    Some(build_queue_song(song, url.to_string()))
+                    Some(QueueSong::new(song, url.to_string(), download))
                 } else {
                     None
                 }
@@ -81,11 +84,6 @@ impl SongParser for YoutubeParser {
     }
 }
 
-fn build_queue_song(song: Song, url: String) -> QueueSong {
-    // QueueSong::new(song, url, { |url, dest_folder| Box::pin(download(url, dest_folder)) as _ })
-    QueueSong::new(song, url, download)
-}
-
 fn download(
     url: &str,
     dest_folder: PathBuf,
@@ -105,20 +103,18 @@ fn download(
 }
 
 /// Creates a new `Song` instance from a `ytextract::Video`.
-// TODO: Add album name & year & track
-async fn build_song_from_video(video: ytextract::Video) -> Song {
-    let thumbnail = get_thumbnail(&video).await;
-
+// TODO: Add album name
+async fn build_song_from_video(video: ytextract::Video, track: Option<u16>) -> Song {
     let album = Album {
         name: "album".to_string(),
         artist: video.channel().name().to_string(),
-        year: None,
-        cover: thumbnail,
+        year: video.date().to_string()[0..4].parse().ok(),
+        cover: get_thumbnail(&video).await,
     };
 
     Song {
         title: video.title().to_string(),
-        track: None,
+        track,
         album,
     }
 }
