@@ -22,7 +22,7 @@ impl Parser {
         Parser { parsers }
     }
 
-    /// Parses an url and returns a result containing a vector of `DownloadableSong`
+    /// Parses an url and returns a result containing a vector of `QueueSong`
     /// if it matches with a parser.
     ///
     /// # Errors
