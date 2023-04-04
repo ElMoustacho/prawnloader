@@ -5,8 +5,9 @@ use serde::Serialize;
 use std::{path::PathBuf, pin::Pin, sync::atomic::AtomicUsize};
 use tokio::task::JoinHandle;
 
-use super::Event;
 use crate::music::Song;
+
+use super::downloader::Event;
 
 pub type Queue = Vec<QueueSong>;
 pub type SerializableQueue = Vec<SerializableQueueSong>;
