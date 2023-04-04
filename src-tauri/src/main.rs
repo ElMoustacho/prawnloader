@@ -3,17 +3,22 @@
     windows_subsystem = "windows"
 )]
 
-use prawnloader::downloader::{self, Event};
+use prawnloader::{
+    downloader::{Downloader, Event},
+    parsers::parse_url,
+};
 use tauri::{api::path::download_dir, Manager, State};
 use tokio::sync::Mutex;
 
 struct AppState {
-    downloader: Mutex<downloader::Downloader>,
+    downloader: Mutex<Downloader>,
 }
 
 #[tauri::command]
 async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), String> {
-    let result = state.downloader.lock().await.add_to_queue(url).await;
+    let mut songs = parse_url(&url).await.map_err(|err| err.to_string())?;
+
+    let result = state.downloader.lock().await.add_to_queue(&mut songs).await;
 
     result.map_err(|e| e.to_string())
 }
@@ -60,7 +65,7 @@ async fn download_queue(state: State<'_, AppState>) -> Result<(), String> {
 fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            let downloader = downloader::Downloader::new();
+            let downloader = Downloader::new();
 
             let handle = app.handle();
             let receiver = downloader.get_event_receiver();

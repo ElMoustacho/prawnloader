@@ -98,6 +98,8 @@ fn download(
             .download_to_dir(dest_folder.clone())
             .await?;
 
+        // TODO: Convert files to mp3
+
         Ok(dest_folder)
     })
 }
@@ -146,42 +148,33 @@ fn parse_yt_music_to_yt(url: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::parsers::Parser;
+    use crate::parsers::parse_url;
 
     #[tokio::test]
     async fn video_parse() {
-        let parser = Parser::new(vec![Box::new(YoutubeParser::new())]);
-
-        parser
-            .parse_url(&String::from("https://www.youtube.com/watch?v=ORofRTMg-iY"))
+        parse_url(&String::from("https://www.youtube.com/watch?v=ORofRTMg-iY"))
             .await
             .expect("Url should be parsable to a YT video.");
 
-        parser
-            .parse_url(&String::from(
-                "https://music.youtube.com/watch?v=gAy5WZo9kts",
-            ))
-            .await
-            .expect("Url should be parsable to a YT music song.");
+        parse_url(&String::from(
+            "https://music.youtube.com/watch?v=gAy5WZo9kts",
+        ))
+        .await
+        .expect("Url should be parsable to a YT music song.");
     }
 
     #[tokio::test]
     async fn playlist_parse() {
-        let parser = Parser::new(vec![Box::new(YoutubeParser::new())]);
+        parse_url(&String::from(
+            "https://www.youtube.com/playlist?list=PLevurNKwl9HEcxa6K3dUoQ1jSBUUC2UxI",
+        ))
+        .await
+        .expect("Url should be parsable to a YT playlist.");
 
-        parser
-            .parse_url(&String::from(
-                "https://www.youtube.com/playlist?list=PLevurNKwl9HEcxa6K3dUoQ1jSBUUC2UxI",
-            ))
-            .await
-            .expect("Url should be parsable to a YT playlist.");
-
-        parser
-            .parse_url(&String::from(
-                "https://music.youtube.com/playlist?list=OLAK5uy_nSewatBUjTf3IO_DIqqMXn3ps_WbEAyi4",
-            ))
-            .await
-            .expect("Url should be parsable to a YT music playlist.");
+        parse_url(&String::from(
+            "https://music.youtube.com/playlist?list=OLAK5uy_nSewatBUjTf3IO_DIqqMXn3ps_WbEAyi4",
+        ))
+        .await
+        .expect("Url should be parsable to a YT music playlist.");
     }
 }
