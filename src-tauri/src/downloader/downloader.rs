@@ -34,20 +34,16 @@ impl Downloader {
         self.event_receiver.clone()
     }
 
-    pub async fn add_to_queue(&mut self, songs: &mut Vec<QueueSong>) -> Result<()> {
+    pub async fn add_to_queue(&mut self, songs: &mut Vec<QueueSong>) {
         self.queue.append(songs);
 
         self.emit_queue_update();
-
-        Ok(())
     }
 
-    pub fn remove_from_queue(&mut self, index: Id) -> Result<(), ()> {
+    pub fn remove_from_queue(&mut self, index: Id) {
         self.queue.retain(|song| song.id != index);
 
         self.emit_queue_update();
-
-        Ok(())
     }
 
     pub fn clear_queue(&mut self) {

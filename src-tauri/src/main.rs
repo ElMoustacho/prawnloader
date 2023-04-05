@@ -18,16 +18,16 @@ struct AppState {
 async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), String> {
     let mut songs = parse_url(&url).await.map_err(|err| err.to_string())?;
 
-    let result = state.downloader.lock().await.add_to_queue(&mut songs).await;
+    state.downloader.lock().await.add_to_queue(&mut songs).await;
 
-    result.map_err(|e| e.to_string())
+    Ok(())
 }
 
 #[tauri::command]
 async fn remove_from_queue(id: usize, state: State<'_, AppState>) -> Result<(), ()> {
-    let result = state.downloader.lock().await.remove_from_queue(id);
+    state.downloader.lock().await.remove_from_queue(id);
 
-    result
+    Ok(())
 }
 
 #[tauri::command]
