@@ -1,27 +1,31 @@
 use anyhow::Result;
-use crossbeam::channel::Sender;
 use futures::Future;
-use serde::Serialize;
+use serde::{ser::SerializeStruct, Serialize};
 use std::{path::PathBuf, pin::Pin, sync::atomic::AtomicUsize};
 use tokio::task::JoinHandle;
 
 use crate::music::Song;
 
-use super::downloader::Event;
-
 pub type Queue = Vec<QueueSong>;
-pub type SerializableQueue = Vec<SerializableQueueSong>;
 pub type DownloadFun =
     fn(&str, PathBuf) -> Pin<Box<dyn Future<Output = Result<PathBuf>> + Send + '_>>;
 pub type Id = usize;
+
+#[derive(Clone, Copy, Serialize)]
+pub enum DownloadState {
+    Downloading,
+    Stopped,
+    Finished,
+}
 
 pub struct QueueSong {
     pub(super) id: Id,
     pub(super) song: Song,
     pub(super) progress: i8,
-    pub download_handle: Option<JoinHandle<Result<PathBuf>>>,
-    pub download_fun: DownloadFun,
-    pub url: String,
+    pub(super) download_state: DownloadState,
+    pub(super) download_handle: Option<JoinHandle<Result<PathBuf>>>,
+    pub(super) download_fun: DownloadFun,
+    pub(super) url: String,
 }
 
 impl QueueSong {
@@ -30,41 +34,41 @@ impl QueueSong {
             id: generate_id(),
             song,
             progress: 0,
+            download_state: DownloadState::Stopped,
             download_handle: None,
             download_fun,
             url,
         }
     }
+}
 
-    pub fn start_download(&mut self, dest_folder: PathBuf, event_sender: Sender<Event>) {
-        let dl_fun = self.download_fun;
-        let url = self.url.clone();
-
-        self.download_handle = Some(tokio::spawn(async move {
-            let result = dl_fun(&url, dest_folder.clone()).await;
-
-            event_sender
-                .send(Event::DownloadComplete(dest_folder))
-                .expect("Channel should be connected.");
-
-            result
-        }));
-    }
-
-    pub fn get_serializable(&self) -> SerializableQueueSong {
-        SerializableQueueSong {
-            id: self.id,
+impl Clone for QueueSong {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
             song: self.song.clone(),
-            progress: self.progress,
+            progress: self.progress.clone(),
+            download_state: self.download_state.clone(),
+            download_handle: None,
+            download_fun: self.download_fun.clone(),
+            url: self.url.clone(),
         }
     }
 }
 
-#[derive(Clone, Serialize)]
-pub struct SerializableQueueSong {
-    pub id: Id,
-    pub song: Song,
-    pub progress: i8,
+impl Serialize for QueueSong {
+    fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("QueueSong", 5)?;
+        state.serialize_field("id", &self.id)?;
+        state.serialize_field("song", &self.song)?;
+        state.serialize_field("progress", &self.progress)?;
+        state.serialize_field("url", &self.url)?;
+        state.serialize_field("download_state", &self.download_state)?;
+        state.end()
+    }
 }
 
 fn generate_id() -> Id {

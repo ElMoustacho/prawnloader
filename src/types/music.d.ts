@@ -1,3 +1,5 @@
+type DownloadState = 'Downloading' | 'Stopped' | 'Finished';
+
 export interface Album {
 	name: string;
 	artist: string;
@@ -12,7 +14,9 @@ export interface Song {
 }
 
 export interface QueueSong {
-	id: number,
+	id: number;
 	song: Song;
 	progress: number;
+	download_state: DownloadState;
+	url: string;
 }

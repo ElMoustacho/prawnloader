@@ -11,6 +11,8 @@
 	];
 
 	onMount(() => listen('queue_update', e => ($queue = e.payload)));
+
+	$: console.log($queue);
 </script>
 
 <div class="tabs">

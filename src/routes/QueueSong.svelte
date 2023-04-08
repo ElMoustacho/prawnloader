@@ -26,22 +26,34 @@
 					>{queueSong.song.album.artist}</span>
 			</div>
 		</div>
+
+		{#if queueSong.download_state === 'Downloading'}
+			<progress value={queueSong.progress} />
+		{/if}
 	</div>
 
 	<div class="list-item-controls">
 		<div class="buttons is-right">
-			<button class="button" on:click={() => invoke('download', { id: queueSong.id })}>
-				<span class="icon is-small">
-					<i class="fas fa-download" />
-				</span>
-			</button>
-			<button
-				class="button is-danger"
-				on:click={() => invoke('remove_from_queue', { id: queueSong.id })}>
-				<span class="icon is-small">
-					<i class="fas fa-trash" />
-				</span>
-			</button>
+			{#if queueSong.download_state !== 'Downloading'}
+				<button class="button" on:click={() => invoke('download', { id: queueSong.id })}>
+					<span class="icon is-small">
+						<i class="fas fa-download" />
+					</span>
+				</button>
+				<button
+					class="button is-danger"
+					on:click={() => invoke('remove_from_queue', { id: queueSong.id })}>
+					<span class="icon is-small">
+						<i class="fas fa-trash" />
+					</span>
+				</button>
+			{:else}
+				<button class="button is-warning">
+					<span class="icon is-small">
+						<i class="fas fa-square" />
+					</span>
+				</button>
+			{/if}
 		</div>
 	</div>
 </div>
