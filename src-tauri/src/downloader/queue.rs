@@ -2,7 +2,6 @@ use anyhow::Result;
 use futures::Future;
 use serde::{ser::SerializeStruct, Serialize};
 use std::{path::PathBuf, pin::Pin, sync::atomic::AtomicUsize};
-use tokio::task::JoinHandle;
 
 use crate::music::Song;
 
@@ -23,7 +22,6 @@ pub struct QueueSong {
     pub(super) song: Song,
     pub(super) progress: i8,
     pub(super) download_state: DownloadState,
-    pub(super) download_handle: Option<JoinHandle<Result<PathBuf>>>,
     pub(super) download_fun: DownloadFun,
     pub(super) url: String,
 }
@@ -35,7 +33,6 @@ impl QueueSong {
             song,
             progress: 0,
             download_state: DownloadState::Stopped,
-            download_handle: None,
             download_fun,
             url,
         }
@@ -49,7 +46,6 @@ impl Clone for QueueSong {
             song: self.song.clone(),
             progress: self.progress.clone(),
             download_state: self.download_state.clone(),
-            download_handle: None,
             download_fun: self.download_fun.clone(),
             url: self.url.clone(),
         }

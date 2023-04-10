@@ -1,7 +1,7 @@
-use anyhow::bail;
 use anyhow::Context;
 use anyhow::Result;
 use crossbeam::channel::{unbounded, Receiver, Sender};
+use futures::executor::ThreadPool;
 use std::path::{Path, PathBuf};
 
 use crate::music::Song;
@@ -18,17 +18,24 @@ pub enum Event {
 pub struct Downloader {
     event_sender: Sender<Event>,
     event_receiver: Receiver<Event>,
+    download_sender: Sender<String>,
+    download_receiver: Receiver<String>,
     queue: Queue,
+    threadpool: ThreadPool,
 }
 
 impl Downloader {
     pub fn new() -> Downloader {
         let (event_sender, event_receiver) = unbounded();
+        let (download_sender, download_receiver) = unbounded();
 
         Downloader {
             event_sender,
             event_receiver,
+            download_sender,
+            download_receiver,
             queue: Vec::new(),
+            threadpool: ThreadPool::new().expect("Error while building ThreadPool."),
         }
     }
 
@@ -61,33 +68,15 @@ impl Downloader {
             .find(|song| song.id == id)
             .context("Song not found.")?;
 
-        download_song(self.event_sender.clone(), queue_song, dest_folder.clone());
+        download_song(queue_song, dest_folder.clone(), &self.threadpool);
 
         Ok(())
     }
 
     pub fn start_download_queue(&mut self, dest_folder: &Path) {
         for queue_song in self.queue.iter_mut() {
-            download_song(self.event_sender.clone(), queue_song, dest_folder.clone());
+            download_song(queue_song, dest_folder.clone(), &self.threadpool);
         }
-    }
-
-    pub fn stop_download(&mut self, id: Id) -> Result<()> {
-        let queue_song = self
-            .queue
-            .iter_mut()
-            .find(|song| song.id == id)
-            .context("Song not found")?;
-
-        if let Some(handle) = &queue_song.download_handle {
-            handle.abort();
-            queue_song.download_handle = None;
-            queue_song.download_state = DownloadState::Stopped;
-        } else {
-            bail!("This song is not downloading.");
-        }
-
-        Ok(())
     }
 
     fn emit_queue_update(&self) {
@@ -97,19 +86,14 @@ impl Downloader {
     }
 }
 
-fn download_song(event_sender: Sender<Event>, queue_song: &mut QueueSong, dest_folder: &Path) {
+fn download_song(queue_song: &mut QueueSong, dest_folder: &Path, threadpool: &ThreadPool) {
     let dl_fun = queue_song.download_fun;
     let url = queue_song.url.clone();
     let dest_folder = dest_folder.to_owned();
 
     queue_song.download_state = DownloadState::Downloading;
-    queue_song.download_handle = Some(tokio::spawn(async move {
-        let result = (dl_fun)(&url, dest_folder.to_path_buf()).await;
 
-        event_sender
-            .send(Event::DownloadComplete(dest_folder))
-            .expect("Channel should be connected.");
-
-        result
-    }));
+    threadpool.spawn_ok(async move {
+        (dl_fun)(&url, dest_folder.to_path_buf()).await;
+    })
 }
