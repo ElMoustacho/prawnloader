@@ -4,7 +4,7 @@
 )]
 
 use prawnloader::{
-    downloader::{DownloadRequest, Downloader},
+    downloader::{DownloadRequest, Downloader, ProgressEvent},
     parsers::{normalize_url, ParsedId},
 };
 use tauri::{Manager, State};
@@ -39,7 +39,19 @@ async fn main() {
             // Transfer any download event to the front-end
             std::thread::spawn(move || {
                 while let Ok(event) = receiver.recv() {
-                    handle.emit_all(&event.to_string(), event).unwrap();
+                    let event_name = &event.to_string();
+                    match event {
+                        ProgressEvent::Queue(track)
+                        | ProgressEvent::Start(track)
+                        | ProgressEvent::Finish(track)
+                        | ProgressEvent::DownloadError(track) => {
+                            handle.emit_all(event_name, track).unwrap()
+                        }
+                        ProgressEvent::SongNotFoundError(id)
+                        | ProgressEvent::AlbumNotFoundError(id) => {
+                            handle.emit_all(event_name, id).unwrap()
+                        }
+                    };
                 }
             });
 
