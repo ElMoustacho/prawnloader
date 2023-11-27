@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use deezer::{models::Track, DeezerClient};
@@ -31,16 +29,10 @@ pub enum ProgressEvent {
     AlbumNotFoundError(Id),
 }
 
-#[derive(Debug)]
+#[derive(Debug, strum_macros::Display)]
 pub enum DownloadStatus {
     Downloading,
     Inactive,
-}
-
-impl Display for DownloadStatus {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
 }
 
 #[derive(Debug)]
