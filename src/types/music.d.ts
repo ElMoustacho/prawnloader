@@ -1,22 +1,29 @@
-type DownloadState = 'Downloading' | 'Stopped' | 'Finished';
+type DownloadStatus = 'Downloading' | 'Inactive';
+
+// ALbum, Artist and Song are incomplete but define only what is needed for the front-end
 
 export interface Album {
+	title: string;
+	cover: string;
+	cover_big: string;
+	cover_medium: string;
+	cover_small: string;
+	cover_xl: string;
+	release_date: string;
+}
+
+export interface Artist {
 	name: string;
-	artist: string;
-	year: number | null;
-	cover: ArrayBuffer | null;
 }
 
 export interface Song {
-	title: string;
-	track: number | null;
 	album: Album;
+	artist: Artist;
+	title: string;
+	track_position: number;
 }
 
 export interface QueueSong {
-	id: number;
 	song: Song;
-	progress: number;
-	download_state: DownloadState;
-	url: string;
+	download_state: DownloadStatus;
 }
