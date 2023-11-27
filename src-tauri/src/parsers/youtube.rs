@@ -10,7 +10,6 @@ use std::pin::Pin;
 use std::str::FromStr;
 
 use super::{ParserResult, SongParser};
-use crate::downloader::queue::{Queue, QueueSong};
 use crate::music::{Album, Song};
 
 pub(crate) struct YoutubeParser {
