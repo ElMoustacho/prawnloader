@@ -1,39 +1,26 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api';
-	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { confirm } from '@tauri-apps/api/dialog';
-	import { onMount } from 'svelte';
-	import unlistenAllTauriEvents from '$lib/ts/unlistenAllTauriEvents';
 	import { queue } from '$lib/ts/stores';
 	import QueueSong from './QueueSong.svelte';
 
 	let urls = '';
 
-	onMount(() => {
-		let events: Promise<UnlistenFn>[] = [];
-
-		events.push(
-			listen('download_complete', e => console.info(`Download "${e.payload}" complete!`))
-		);
-
-		return () => unlistenAllTauriEvents(events);
-	});
-
 	function addToQueue() {
 		urls.trim()
 			.split('\n')
-			.forEach(url => invoke('add_to_queue', { url }));
+			.forEach(url => invoke('request_download', { url }));
 
 		urls = '';
 	}
 
 	function downloadQueue() {
-		invoke('download_queue', {});
+		throw new Error('Not implemented yet.');
 	}
 
 	async function clearQueue() {
 		if ((await confirm('Do you want to clear the queue?')) === true) {
-			invoke('clear_queue', {});
+			throw new Error('Not implemented yet.');
 		}
 	}
 </script>
@@ -57,13 +44,13 @@
 
 	<div class="column is-5-desktop">
 		<div class="pb-4 is-flex">
-			<button class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
+			<button disabled class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
 				<span class="icon">
 					<i class="fa fa-download" />
 				</span>
 				<span>Download all</span>
 			</button>
-			<button class="mx-1 is-flex-grow-1 button is-danger" on:click={clearQueue}>
+			<button disabled class="mx-1 is-flex-grow-1 button is-danger" on:click={clearQueue}>
 				<span class="icon">
 					<i class="fa fa-trash" />
 				</span>
