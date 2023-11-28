@@ -17,6 +17,7 @@ export interface Artist {
 }
 
 export interface Song {
+	id: string;
 	album: Album;
 	artist: Artist;
 	title: string;

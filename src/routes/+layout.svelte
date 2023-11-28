@@ -10,7 +10,26 @@
 		['/settings', 'Settings'],
 	];
 
-	onMount(() => listen('queue_update', e => ($queue = e.payload)));
+	// Download related event listeners
+	onMount(() => {
+		listen('Queue', e =>
+			$queue.push({
+				download_state: 'Inactive',
+				song: e.payload,
+			}),
+		);
+		listen('Start', e =>
+			$queue.forEach(queueSong => {
+				if (queueSong.song.id == e.payload.id) {
+					queueSong.download_state = 'Downloading';
+				}
+			}),
+		);
+		listen(
+			'Finish',
+			e => ($queue = $queue.filter(queueSong => queueSong.song.id != e.payload.id)),
+		);
+	});
 
 	$: console.log($queue);
 </script>
