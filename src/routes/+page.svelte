@@ -62,7 +62,7 @@
 			{#each $queue as queueSong}
 				<QueueSong {queueSong} />
 			{:else}
-				<h2 class="subtitle has-text-centered">You have no song in the queue</h2>
+				<h2 class="subtitle has-text-centered m-auto">You have no song in the queue</h2>
 			{/each}
 		</div>
 	</div>
