@@ -7,7 +7,7 @@
 <div class="list-item">
 	<div class="list-item-image">
 		<figure class="image is-32x32">
-			<img src={queueSong.song.album.cover} alt="" />
+			<img src={queueSong.song.album.cover_small} alt="" />
 		</figure>
 	</div>
 
