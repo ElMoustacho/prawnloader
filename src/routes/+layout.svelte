@@ -40,8 +40,6 @@
 			$queue = $queue;
 		});
 	});
-
-	$: console.log($queue);
 </script>
 
 <div class="tabs">
