@@ -58,7 +58,7 @@
 			</button>
 		</div>
 
-		<div class="block box list has-overflow-ellipsis">
+		<div class="block box p-1 list has-overflow-ellipsis">
 			{#each $queue as queueSong}
 				<QueueSong {queueSong} />
 			{:else}
