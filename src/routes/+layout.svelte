@@ -12,23 +12,30 @@
 
 	// Download related event listeners
 	onMount(() => {
-		listen('Queue', e =>
+		listen('Queue', e => {
 			$queue.push({
 				download_state: 'Inactive',
 				song: e.payload,
-			}),
-		);
-		listen('Start', e =>
+			});
+			$queue = $queue;
+		});
+
+		listen('Start', e => {
 			$queue.forEach(queueSong => {
 				if (queueSong.song.id == e.payload.id) {
 					queueSong.download_state = 'Downloading';
 				}
-			}),
-		);
-		listen(
-			'Finish',
-			e => ($queue = $queue.filter(queueSong => queueSong.song.id != e.payload.id)),
-		);
+			});
+			$queue = $queue;
+		});
+
+		listen('Finish', e => {
+			const firstSongIndex = $queue.findIndex(
+				queueSong => queueSong.song.id === e.payload.id,
+			);
+			$queue.splice(firstSongIndex, 1);
+			$queue = $queue;
+		});
 	});
 
 	$: console.log($queue);
