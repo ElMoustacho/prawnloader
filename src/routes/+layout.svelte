@@ -33,6 +33,9 @@
 			const firstSongIndex = $queue.findIndex(
 				queueSong => queueSong.song.id === e.payload.id,
 			);
+
+			if (firstSongIndex < 0) return;
+
 			$queue.splice(firstSongIndex, 1);
 			$queue = $queue;
 		});
