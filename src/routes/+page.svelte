@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api';
 	import { confirm } from '@tauri-apps/api/dialog';
-	import { queue } from '$lib/ts/stores';
+	import { logs, queue } from '$lib/ts/stores';
 	import QueueSong from './QueueSong.svelte';
 
 	let urls = '';
@@ -65,6 +65,17 @@
 				<h2 class="subtitle has-text-centered m-auto">You have no song in the queue</h2>
 			{/each}
 		</div>
+	</div>
+</div>
+
+<div class="columns is-desktop">
+	<div class="column is-7-desktop">
+		<textarea
+			disabled
+			class="textarea block"
+			placeholder="Enter one URL per line"
+			rows="5"
+			value={$logs.join('\n')} />
 	</div>
 </div>
 

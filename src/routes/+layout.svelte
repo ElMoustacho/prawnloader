@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { queue } from '$lib/ts/stores';
+	import { logs, queue } from '$lib/ts/stores';
 	import { listen } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
 
@@ -10,8 +10,8 @@
 		['/settings', 'Settings'],
 	];
 
-	// Download related event listeners
 	onMount(() => {
+		// Download related event listeners
 		listen('Queue', e => {
 			$queue.push({
 				download_state: 'Inactive',
@@ -38,6 +38,23 @@
 
 			$queue.splice(firstSongIndex, 1);
 			$queue = $queue;
+		});
+
+		// TODO: Implement these events
+		// Error related event listeners
+		listen('DownloadError', e => {
+			$logs.push(e.payload.toString());
+			$logs = $logs;
+		});
+
+		listen('SongNotFoundError', e => {
+			$logs.push(e.payload.toString());
+			$logs = $logs;
+		});
+
+		listen('AlbumNotFoundError', e => {
+			$logs.push(e.payload.toString());
+			$logs = $logs;
 		});
 	});
 </script>
