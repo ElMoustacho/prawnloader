@@ -1,5 +1,12 @@
 <script lang="ts">
-	import { logs, queue } from '$lib/ts/stores';
+	import {
+		addLog,
+		formatLogAlbumNotFound,
+		formatLogDownloadError,
+		formatLogSongNotFound,
+		formatLogSuccess,
+	} from '$lib/ts/log';
+	import { queue } from '$lib/ts/stores';
 	import { listen } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
 
@@ -30,31 +37,28 @@
 		});
 
 		listen('Finish', e => {
-			const firstSongIndex = $queue.findIndex(
-				queueSong => queueSong.song.id === e.payload.id,
-			);
+			const song = e.payload;
+			const firstSongIndex = $queue.findIndex(queueSong => queueSong.song.id === song.id);
 
 			if (firstSongIndex < 0) return;
 
 			$queue.splice(firstSongIndex, 1);
 			$queue = $queue;
+
+			addLog(formatLogSuccess(song));
 		});
 
-		// TODO: Implement these events
 		// Error related event listeners
 		listen('DownloadError', e => {
-			$logs.push(e.payload.toString());
-			$logs = $logs;
+			addLog(formatLogDownloadError(e.payload));
 		});
 
 		listen('SongNotFoundError', e => {
-			$logs.push(e.payload.toString());
-			$logs = $logs;
+			addLog(formatLogSongNotFound(e.payload));
 		});
 
 		listen('AlbumNotFoundError', e => {
-			$logs.push(e.payload.toString());
-			$logs = $logs;
+			addLog(formatLogAlbumNotFound(e.payload));
 		});
 	});
 </script>

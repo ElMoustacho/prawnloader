@@ -1,15 +1,21 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api';
 	import { confirm } from '@tauri-apps/api/dialog';
-	import { logs, queue } from '$lib/ts/stores';
+	import { queue } from '$lib/ts/stores';
+	import { addLog, logs, Log } from '$lib/ts/log';
 	import QueueSong from '$lib/svelte/QueueSong.svelte';
+	import LogComponent from '$lib/svelte/Log.svelte';
 
 	let urls = '';
 
 	function addToQueue() {
+		if (urls.length <= 0) return;
+
 		urls.trim()
 			.split('\n')
-			.forEach(url => invoke('request_download', { url }));
+			.forEach(url =>
+				invoke('request_download', { url }).catch(reason => addLog(new Log(false, reason))),
+			);
 
 		urls = '';
 	}
@@ -69,13 +75,11 @@
 </div>
 
 <div class="columns is-desktop">
-	<div class="column is-7-desktop">
-		<textarea
-			disabled
-			class="textarea block"
-			placeholder="Enter one URL per line"
-			rows="5"
-			value={$logs.join('\n')} />
+	<div class="column is-7-desktop box">
+		<h2 class="subtitle">Logs</h2>
+		{#each $logs as log}
+			<LogComponent {log} />
+		{/each}
 	</div>
 </div>
 

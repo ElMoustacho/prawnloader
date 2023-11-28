@@ -15,7 +15,9 @@ struct AppState {
 
 #[tauri::command]
 async fn request_download(url: String, state: State<'_, AppState>) -> Result<(), String> {
-    let parsed_id = normalize_url(&url).await.map_err(|x| x.to_string())?;
+    let parsed_id = normalize_url(&url)
+        .await
+        .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
     let download_request = match parsed_id {
         ParsedId::DeezerAlbum(id) => DownloadRequest::Album(id),
         ParsedId::DeezerTrack(id) => DownloadRequest::Song(id),
