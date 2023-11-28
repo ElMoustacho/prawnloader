@@ -2,7 +2,7 @@
 	import { invoke } from '@tauri-apps/api';
 	import { confirm } from '@tauri-apps/api/dialog';
 	import { logs, queue } from '$lib/ts/stores';
-	import QueueSong from './QueueSong.svelte';
+	import QueueSong from '$lib/svelte/QueueSong.svelte';
 
 	let urls = '';
 
