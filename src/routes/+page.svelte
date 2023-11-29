@@ -14,7 +14,7 @@
 		urls.trim()
 			.split('\n')
 			.forEach(url =>
-				invoke('request_download', { url }).catch(reason => addLog(new Log(false, reason))),
+				invoke('add_to_queue', { url }).catch(reason => addLog(new Log(false, reason))),
 			);
 
 		urls = '';

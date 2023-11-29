@@ -1,11 +1,5 @@
 <script lang="ts">
-	import {
-		addLog,
-		formatLogAlbumNotFound,
-		formatLogDownloadError,
-		formatLogSongNotFound,
-		formatLogSuccess,
-	} from '$lib/ts/log';
+	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/ts/log';
 	import { queue } from '$lib/ts/stores';
 	import { listen } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
@@ -19,7 +13,7 @@
 
 	onMount(() => {
 		// Download related event listeners
-		listen('Queue', e => {
+		listen('AddToQueue', e => {
 			$queue.push({
 				download_state: 'Inactive',
 				song: e.payload,
@@ -51,14 +45,6 @@
 		// Error related event listeners
 		listen('DownloadError', e => {
 			addLog(formatLogDownloadError(e.payload));
-		});
-
-		listen('SongNotFoundError', e => {
-			addLog(formatLogSongNotFound(e.payload));
-		});
-
-		listen('AlbumNotFoundError', e => {
-			addLog(formatLogAlbumNotFound(e.payload));
 		});
 	});
 </script>
