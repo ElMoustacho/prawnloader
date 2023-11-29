@@ -3,11 +3,9 @@ import type { Song } from './music';
 
 module '@tauri-apps/api/event' {
 	export interface Events {
-		Queue: Song;
+		AddToQueue: Song;
 		Start: Song;
 		Finish: Song;
 		DownloadError: Song;
-		SongNotFoundError: number;
-		AlbumNotFoundError: number;
 	}
 }

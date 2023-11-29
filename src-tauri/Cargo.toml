@@ -32,6 +32,7 @@ deezer = { git = "https://github.com/ElMoustacho/deezer-rs" }
 deezer_downloader = { git = "https://github.com/zggff/deezer_downloader", rev = "91c38c0" }
 url = "2.5.0"
 strum_macros = "0.25.3"
+thiserror = "1.0.50"
 
 
 [features]

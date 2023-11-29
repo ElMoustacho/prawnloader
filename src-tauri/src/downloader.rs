@@ -13,20 +13,12 @@ static DOWNLOAD_THREADS: u64 = 4;
 
 pub type Id = u64;
 
-#[derive(Debug, Clone, Serialize)]
-pub enum DownloadRequest {
-    Album(Id),
-    Song(Id),
-}
-
 #[derive(Debug, Clone, Serialize, strum_macros::Display)]
 pub enum ProgressEvent {
-    Queue(Track),
+    Waiting(Track),
     Start(Track),
     Finish(Track),
     DownloadError(Track),
-    SongNotFoundError(Id),
-    AlbumNotFoundError(Id),
 }
 
 #[derive(Debug, strum_macros::Display)]
@@ -37,8 +29,8 @@ pub enum DownloadStatus {
 
 #[derive(Debug)]
 pub struct Downloader {
+    deezer_client: DeezerClient,
     progress_rx: Receiver<ProgressEvent>,
-    progress_tx: Sender<ProgressEvent>,
     download_tx: Sender<Track>,
 }
 
@@ -70,8 +62,8 @@ impl Downloader {
         }
 
         Downloader {
+            deezer_client: DeezerClient::new(),
             download_tx,
-            progress_tx,
             progress_rx,
         }
     }
@@ -80,70 +72,43 @@ impl Downloader {
         self.progress_rx.clone()
     }
 
-    pub fn request_download(&self, request: DownloadRequest) {
-        match request {
-            DownloadRequest::Song(id) => {
-                let _progress_tx = self.progress_tx.clone();
-                let _download_tx = self.download_tx.clone();
-
-                tokio::spawn(download_song(id, _progress_tx, _download_tx));
-            }
-            DownloadRequest::Album(id) => {
-                let _progress_tx = self.progress_tx.clone();
-                let _download_tx = self.download_tx.clone();
-
-                tokio::spawn(download_album(id, _progress_tx, _download_tx));
-            }
-        };
+    pub fn request_download(&self, track: Track) {
+        self.download_tx
+            .send(track)
+            .expect("Channel should be open");
     }
-}
 
-async fn download_song(id: u64, progress_tx: Sender<ProgressEvent>, download_tx: Sender<Track>) {
-    let client = DeezerClient::new();
-    let maybe_track = client.track(id).await;
+    pub async fn get_track(&self, id: u64) -> Option<Track> {
+        let maybe_track = self.deezer_client.track(id).await;
 
-    // Check if the song was found AND is readable
-    match maybe_track {
-        Ok(Some(track)) if track.readable => {
-            progress_tx
-                .send(ProgressEvent::Queue(track.clone()))
-                .expect("Channel should be open.");
-            download_tx.send(track).expect("Channel should be open.");
-        }
-        _ => {
-            progress_tx
-                .send(ProgressEvent::SongNotFoundError(id))
-                .expect("Channel should be open.");
+        // Check if the song was found AND is readable
+        match maybe_track {
+            Ok(Some(track)) if track.readable => Some(track),
+            _ => None,
         }
     }
-}
 
-async fn download_album(id: u64, progress_tx: Sender<ProgressEvent>, download_tx: Sender<Track>) {
-    let client = DeezerClient::new();
-    let maybe_album = client.album(id).await;
+    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<Track>> {
+        let maybe_album = self.deezer_client.album(id).await;
+        if let Ok(Some(album)) = maybe_album {
+            let futures: Vec<_> = album
+                .tracks
+                .into_iter()
+                .map(|album_track| {
+                    async move {
+                        // FIXME: Expect may panic on unsable connections
+                        album_track
+                            .get_full()
+                            .await
+                            .expect("Track should always be available.")
+                    }
+                })
+                .collect();
 
-    if let Ok(Some(album)) = maybe_album {
-        let mut futures = Vec::new();
-
-        for album_track in album.tracks.iter() {
-            futures.push(async {
-                let track = album_track
-                    .get_full()
-                    .await
-                    .expect("Track should always be available.");
-
-                progress_tx
-                    .send(ProgressEvent::Queue(track.clone()))
-                    .expect("Channel should be open.");
-                download_tx.send(track).expect("Channel should be open.");
-            });
+            return Some(join_all(futures).await);
         }
 
-        join_all(futures).await;
-    } else {
-        progress_tx
-            .send(ProgressEvent::AlbumNotFoundError(id))
-            .expect("Channel should be open.");
+        None
     }
 }
 

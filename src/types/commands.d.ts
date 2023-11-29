@@ -4,6 +4,7 @@ module '@tauri-apps/api' {
 	type NoParams = Record<string, never>;
 
 	export interface Commands {
-		request_download: [{ url: string }, void];
+		add_to_queue: [{ url: string }, void];
+		request_download: [{ trackId: number }, void];
 	}
 }
