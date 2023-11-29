@@ -82,17 +82,19 @@ async fn main() {
             let handle = app.handle();
             let progress_rx = downloader.get_progress_rx();
 
-            // Event loop
             let (_event_tx, _event_rx) = (event_tx.clone(), event_rx.clone());
+
+            // Transfer any download event to the main event loop
             std::thread::spawn(move || {
-                // Transfer any download event to the main event loop
                 while let Ok(progress_event) = progress_rx.recv() {
                     _event_tx
                         .send(Event::ProgressEvent(progress_event))
                         .unwrap();
                 }
+            });
 
-                // Transfer events to front-end
+            // Transfer events to front-end
+            std::thread::spawn(move || {
                 while let Ok(event) = _event_rx.recv() {
                     println!("Add to queue");
                     match event {
