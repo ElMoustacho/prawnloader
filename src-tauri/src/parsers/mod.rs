@@ -2,13 +2,28 @@
 // mod deezer;
 // mod youtube;
 
-use color_eyre::{
-    eyre::{bail, eyre},
-    Result,
-};
+use std::num::ParseIntError;
+
+use color_eyre::eyre::eyre;
 use url::Url;
 
 use crate::downloader::Id;
+
+type Result = std::result::Result<ParsedId, Error>;
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("invalid URL {0}")]
+    InvalidURL(#[from] color_eyre::eyre::Error),
+    #[error("invalid ID {0}")]
+    InvalidId(#[from] ParseIntError),
+    #[error("no parse found for URL {0}")]
+    NoParser(String),
+    #[error("song with id {0} not found")]
+    SongNotFoundError(Id),
+    #[error("album with id {0} not found")]
+    AlbumNotFoundError(Id),
+}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParsedId {
@@ -17,8 +32,8 @@ pub enum ParsedId {
     YoutubeTrack(String),
 }
 
-pub async fn normalize_url(url: &str) -> Result<ParsedId> {
-    let url = Url::parse(url)?;
+pub async fn normalize_url(url: &str) -> Result {
+    let url = Url::parse(url).map_err(|err| color_eyre::eyre::Error::from(err))?;
 
     match url.domain() {
         Some("www.youtube.com") => Ok(parse_youtube(url)?),
@@ -27,20 +42,22 @@ pub async fn normalize_url(url: &str) -> Result<ParsedId> {
             let url = follow_redirects(url).await;
             Ok(parse_deezer(url)?)
         }
-        _ => Err(eyre!("No parser matches this URL")),
+        _ => Err(Error::NoParser(url.to_string())),
     }
 }
 
-fn parse_youtube(url: Url) -> Result<ParsedId> {
+fn parse_youtube(url: Url) -> Result {
     todo!()
 }
 
-fn parse_deezer(url: Url) -> Result<ParsedId> {
+fn parse_deezer(url: Url) -> Result {
     let paths = url.path_segments().ok_or(eyre!("Invalid segments"))?;
     let last_two: Vec<_> = paths.rev().take(2).collect();
 
     if last_two.len() < 2 {
-        bail!("Expected at least 2 path segments.")
+        return Err(Error::InvalidURL(eyre!(
+            "Expected at least 2 path segments."
+        )));
     }
 
     let id = last_two[0].parse::<Id>()?;
@@ -49,7 +66,7 @@ fn parse_deezer(url: Url) -> Result<ParsedId> {
     match track_album {
         "track" => Ok(ParsedId::DeezerTrack(id)),
         "album" => Ok(ParsedId::DeezerAlbum(id)),
-        _ => Err(eyre!("Invalid {track_album}")),
+        _ => Err(Error::InvalidURL(eyre!("Invalid {track_album}"))),
     }
 }
 
