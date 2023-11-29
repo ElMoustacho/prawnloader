@@ -13,7 +13,7 @@
 
 	onMount(() => {
 		// Download related event listeners
-		listen('AddToQueue', e => {
+		listen('add_to_queue', e => {
 			$queue.push({
 				download_state: 'Inactive',
 				song: e.payload,
@@ -21,7 +21,7 @@
 			$queue = $queue;
 		});
 
-		listen('Start', e => {
+		listen('start', e => {
 			$queue.forEach(queueSong => {
 				if (queueSong.song.id == e.payload.id) {
 					queueSong.download_state = 'Downloading';
@@ -30,7 +30,7 @@
 			$queue = $queue;
 		});
 
-		listen('Finish', e => {
+		listen('finish', e => {
 			const song = e.payload;
 			const firstSongIndex = $queue.findIndex(queueSong => queueSong.song.id === song.id);
 
@@ -43,7 +43,7 @@
 		});
 
 		// Error related event listeners
-		listen('DownloadError', e => {
+		listen('download_error', e => {
 			addLog(formatLogDownloadError(e.payload));
 		});
 	});

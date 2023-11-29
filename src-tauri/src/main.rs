@@ -96,22 +96,26 @@ async fn main() {
             // Transfer events to front-end
             std::thread::spawn(move || {
                 while let Ok(event) = _event_rx.recv() {
-                    println!("Add to queue");
                     match event {
                         Event::ProgressEvent(progress_event) => {
-                            let event_name = &progress_event.to_string();
                             match progress_event {
-                                ProgressEvent::Waiting(track)
-                                | ProgressEvent::Start(track)
-                                | ProgressEvent::Finish(track)
-                                | ProgressEvent::DownloadError(track) => {
-                                    handle.emit_all(event_name, track).unwrap()
+                                ProgressEvent::Waiting(track) => {
+                                    handle.emit_all("waiting", track).unwrap()
+                                }
+                                ProgressEvent::Start(track) => {
+                                    handle.emit_all("start", track).unwrap()
+                                }
+                                ProgressEvent::Finish(track) => {
+                                    handle.emit_all("finish", track).unwrap()
+                                }
+                                ProgressEvent::DownloadError(track) => {
+                                    handle.emit_all("download_error", track).unwrap()
                                 }
                             };
                         }
-                        Event::AddToQueue(track) => handle.emit_all("AddToQueue", track).unwrap(),
+                        Event::AddToQueue(track) => handle.emit_all("add_to_queue", track).unwrap(),
                         Event::RemoveFromQueue(track) => {
-                            handle.emit_all("RemoveFromQueue", track).unwrap()
+                            handle.emit_all("remove_from_queue", track).unwrap()
                         }
                     }
                 }
