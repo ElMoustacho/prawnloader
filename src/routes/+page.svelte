@@ -31,24 +31,32 @@
 	}
 </script>
 
-<h1 class="title">Downloads</h1>
-
 <div class="columns is-desktop">
-	<div class="column is-7-desktop">
+	<div class="column is-7-desktop is-flex is-flex-direction-column">
 		<textarea
-			class="textarea block"
+			class="textarea block mb-4"
 			placeholder="Enter one URL per line"
-			rows="10"
+			rows="6"
 			bind:value={urls} />
-		<button class="button" on:click={addToQueue}>
+
+		<button class="button mb-4" on:click={addToQueue}>
 			<span class="icon">
 				<i class="fas fa-plus" />
 			</span>
 			<span>Add to queue</span>
 		</button>
+
+		<div class="box">
+			<h2 class="subtitle">Logs</h2>
+			<div class="logs-wrapper">
+				{#each $logs as log}
+					<LogComponent {log} />
+				{/each}
+			</div>
+		</div>
 	</div>
 
-	<div class="column is-5-desktop">
+	<div class="column is-5-desktop is-flex is-flex-direction-column">
 		<div class="pb-4 is-flex">
 			<button disabled class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
 				<span class="icon">
@@ -64,27 +72,22 @@
 			</button>
 		</div>
 
-		<div class="block box p-1 list has-overflow-ellipsis">
-			{#each $queue as queueSong}
-				<QueueSong {queueSong} />
-			{:else}
-				<h2 class="subtitle has-text-centered m-auto">You have no song in the queue</h2>
-			{/each}
+		<div class="block box list has-overflow-ellipsis is-flex-grow-1">
+			<h2 class="subtitle">Queue</h2>
+			<div class="list">
+				{#each $queue as queueSong}
+					<QueueSong {queueSong} />
+				{:else}
+					<h2 class="subtitle has-text-centered m-auto pt-6 is-unselectable">
+						Queue empty
+					</h2>
+				{/each}
+			</div>
 		</div>
 	</div>
 </div>
 
-<div class="columns is-desktop">
-	<div class="column is-7-desktop box">
-		<h2 class="subtitle">Logs</h2>
-		<div class="logs-wrapper">
-			{#each $logs as log}
-				<LogComponent {log} />
-			{/each}
-		</div>
-	</div>
-</div>
-
+<!-- FIXME: Make content fit window size -->
 <style lang="scss">
 	@import 'bulma/sass/utilities/derived-variables.sass';
 	@import 'bulma/sass/utilities/functions.sass';
@@ -97,14 +100,10 @@
 		scrollbar-width: thin;
 	}
 
-	// DEBUG: Max height
-	.column > .block {
-		height: 300px;
-		overflow-y: auto;
-	}
-
 	.logs-wrapper {
 		display: flex;
 		flex-direction: column-reverse;
+		height: 20em;
+		overflow: hidden auto;
 	}
 </style>
