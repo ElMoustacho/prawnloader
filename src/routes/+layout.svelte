@@ -49,7 +49,7 @@
 	});
 </script>
 
-<div class="tabs">
+<div class="tabs has-background-white">
 	<ul>
 		{#each links as link}
 			<!-- TODO: Add "is-active" when on a page under this link -->
@@ -60,12 +60,14 @@
 	</ul>
 </div>
 
-<div class="container">
+<div class="container pb-6">
 	<slot />
 </div>
 
 <style>
 	.tabs {
 		position: sticky;
+		top: 0;
+		z-index: 10;
 	}
 </style>
