@@ -74,8 +74,12 @@
 	</ul>
 </div>
 
-<section class="section">
-	<div class="container">
-		<slot />
-	</div>
-</section>
+<div class="container">
+	<slot />
+</div>
+
+<style>
+	.tabs {
+		position: sticky;
+	}
+</style>
