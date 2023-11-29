@@ -77,9 +77,11 @@
 <div class="columns is-desktop">
 	<div class="column is-7-desktop box">
 		<h2 class="subtitle">Logs</h2>
-		{#each $logs as log}
-			<LogComponent {log} />
-		{/each}
+		<div class="logs-wrapper">
+			{#each $logs as log}
+				<LogComponent {log} />
+			{/each}
+		</div>
 	</div>
 </div>
 
@@ -99,5 +101,10 @@
 	.column > .block {
 		height: 300px;
 		overflow-y: auto;
+	}
+
+	.logs-wrapper {
+		display: flex;
+		flex-direction: column-reverse;
 	}
 </style>
