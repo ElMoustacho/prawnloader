@@ -31,8 +31,8 @@
 	}
 </script>
 
-<div class="columns is-desktop">
-	<div class="column is-7-desktop is-flex is-flex-direction-column">
+<div class="columns m-0 is-flex-grow-1 max-overflow">
+	<div class="max-overflow column is-flex is-flex-direction-column">
 		<textarea
 			class="textarea block mb-4"
 			placeholder="Enter one URL per line"
@@ -46,17 +46,23 @@
 			<span>Add to queue</span>
 		</button>
 
-		<div class="box">
-			<h2 class="subtitle">Logs</h2>
-			<div class="logs-wrapper">
-				{#each $logs as log}
-					<LogComponent {log} />
-				{/each}
-			</div>
-		</div>
+		<fieldset class="box is-flex-grow-1 max-overflow">
+			<legend class="subtitle m-0 is-unselectable">Logs</legend>
+			{#if $logs.length > 0}
+				<div class="logs-wrapper max-overflow">
+					{#each $logs as log}
+						<LogComponent {log} />
+					{/each}
+				</div>
+			{:else}
+				<h2 class="subtitle pt-2 has-text-centered has-text-grey-lighter is-unselectable">
+					Logs empty
+				</h2>
+			{/if}
+		</fieldset>
 	</div>
 
-	<div class="column is-5-desktop is-flex is-flex-direction-column">
+	<div class="max-overflow column is-flex is-flex-direction-column max-overflow">
 		<div class="pb-4 is-flex">
 			<button disabled class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
 				<span class="icon">
@@ -72,22 +78,23 @@
 			</button>
 		</div>
 
-		<div class="block box list has-overflow-ellipsis is-flex-grow-1">
-			<h2 class="subtitle">Queue</h2>
-			<div class="list">
-				{#each $queue as queueSong}
-					<QueueSong {queueSong} />
-				{:else}
-					<h2 class="subtitle has-text-centered m-auto pt-6 is-unselectable">
-						Queue empty
-					</h2>
-				{/each}
-			</div>
-		</div>
+		<fieldset class="block box list has-overflow-ellipsis is-flex-grow-1 max-overflow">
+			<legend class="subtitle m-0 is-unselectable">Queue</legend>
+			{#if $queue.length > 0}
+				<div class="list max-overflow">
+					{#each $queue as queueSong}
+						<QueueSong {queueSong} />
+					{/each}
+				</div>
+			{:else}
+				<h2 class="subtitle pt-2 has-text-centered has-text-grey-lighter is-unselectable">
+					Queue empty
+				</h2>
+			{/if}
+		</fieldset>
 	</div>
 </div>
 
-<!-- FIXME: Make content fit window size -->
 <style lang="scss">
 	@import 'bulma/sass/utilities/derived-variables.sass';
 	@import 'bulma/sass/utilities/functions.sass';
@@ -103,7 +110,12 @@
 	.logs-wrapper {
 		display: flex;
 		flex-direction: column-reverse;
-		height: 20em;
 		overflow: hidden auto;
+	}
+
+	// 🍝 Allows to scroll lists without overflowing
+	.max-overflow {
+		max-height: 100%;
+		overflow: auto;
 	}
 </style>

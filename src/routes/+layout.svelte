@@ -60,14 +60,22 @@
 	</ul>
 </div>
 
-<div class="container pb-6">
+<div class="container is-flex is-flex-direction-column">
 	<slot />
 </div>
 
-<style>
+<style lang="scss">
 	.tabs {
 		position: sticky;
 		top: 0;
 		z-index: 10;
+	}
+
+	.container {
+		// 🍝 Allows to enfore height rules in flexboxes,
+		// but doesn't affect it because it is in a flexbox
+		height: 0;
+		width: 100%;
+		overflow: hidden;
 	}
 </style>
