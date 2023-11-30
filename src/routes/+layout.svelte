@@ -76,6 +76,6 @@
 		// but doesn't affect it because it is in a flexbox
 		height: 0;
 		width: 100%;
-		overflow: hidden;
+		overflow: visible;
 	}
 </style>
