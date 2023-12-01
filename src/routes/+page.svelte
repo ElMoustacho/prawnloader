@@ -48,7 +48,7 @@
 			<span>Add to queue</span>
 		</button>
 
-		<fieldset class="box is-flex-grow-1 max-overflow">
+		<fieldset class="logs-fieldset box is-flex-grow-1 max-overflow">
 			<legend class="subtitle m-0 is-unselectable">Logs</legend>
 			{#if $logs.length > 0}
 				<div class="logs-wrapper max-overflow">
@@ -64,7 +64,7 @@
 		</fieldset>
 	</div>
 
-	<div class="max-overflow column is-flex is-flex-direction-column max-overflow">
+	<div class="max-overflow column is-flex is-flex-direction-column">
 		<div class="pb-4 is-flex">
 			<button disabled class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
 				<span class="icon">
@@ -80,7 +80,7 @@
 			</button>
 		</div>
 
-		<fieldset class="block box list has-overflow-ellipsis is-flex-grow-1 max-overflow">
+		<fieldset class="block box list has-overflow-ellipsis is-flex-grow-1">
 			<legend class="subtitle m-0 is-unselectable">Queue</legend>
 			{#if $queue.length > 0}
 				<div class="list max-overflow">
@@ -121,5 +121,10 @@
 	.max-overflow {
 		max-height: 100%;
 		overflow: auto;
+	}
+
+	.logs-fieldset {
+		// With flexbox, prevents the fieldset from growing beyond its initial size
+		height: 0;
 	}
 </style>
