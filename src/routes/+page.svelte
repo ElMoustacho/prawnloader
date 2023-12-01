@@ -1,3 +1,7 @@
+<script lang="ts" context="module">
+	let urls = '';
+</script>
+
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api';
 	import { confirm } from '@tauri-apps/api/dialog';
@@ -5,8 +9,6 @@
 	import { addLog, logs, Log } from '$lib/ts/log';
 	import QueueSong from '$lib/svelte/QueueSong.svelte';
 	import LogComponent from '$lib/svelte/Log.svelte';
-
-	let urls = '';
 
 	function addToQueue() {
 		if (urls.length <= 0) return;
@@ -36,7 +38,6 @@
 		<textarea
 			class="textarea block mb-4"
 			placeholder="Enter one URL per line"
-			rows="6"
 			bind:value={urls} />
 
 		<button class="button mb-4" on:click={addToQueue}>
@@ -100,6 +101,8 @@
 	@import 'bulma/sass/utilities/functions.sass';
 
 	.textarea {
+		// 6 lines times the line-height (1.5)
+		height: 6 * 1.5em;
 		white-space: pre;
 		overflow-wrap: normal;
 		overflow-x: auto;
