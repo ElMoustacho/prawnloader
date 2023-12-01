@@ -1,5 +1,7 @@
 <script lang="ts" context="module">
-	let urls = '';
+	import { writable } from 'svelte/store';
+
+	let urls = writable('');
 </script>
 
 <script lang="ts">
@@ -11,15 +13,14 @@
 	import LogComponent from '$lib/svelte/Log.svelte';
 
 	function addToQueue() {
-		if (urls.length <= 0) return;
-
-		urls.trim()
+		if ($urls.length <= 0) return;
+		$urls
+			.trim()
 			.split('\n')
 			.forEach(url =>
 				invoke('add_to_queue', { url }).catch(reason => addLog(new Log(false, reason))),
 			);
-
-		urls = '';
+		$urls = '';
 	}
 
 	function downloadQueue() {
@@ -38,7 +39,7 @@
 		<textarea
 			class="textarea block mb-4"
 			placeholder="Enter one URL per line"
-			bind:value={urls} />
+			bind:value={$urls} />
 
 		<button class="button mb-4" on:click={addToQueue}>
 			<span class="icon">
