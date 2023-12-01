@@ -48,7 +48,7 @@
 			<span>Add to queue</span>
 		</button>
 
-		<fieldset class="logs-fieldset box is-flex-grow-1 max-overflow">
+		<fieldset class=" box is-flex-grow-1 max-overflow">
 			<legend class="subtitle m-0 is-unselectable">Logs</legend>
 			{#if $logs.length > 0}
 				<div class="logs-wrapper max-overflow">
@@ -80,7 +80,7 @@
 			</button>
 		</div>
 
-		<fieldset class="block box list has-overflow-ellipsis is-flex-grow-1">
+		<fieldset class=" block box list has-overflow-ellipsis is-flex-grow-1">
 			<legend class="subtitle m-0 is-unselectable">Queue</legend>
 			{#if $queue.length > 0}
 				<div class="list max-overflow">
@@ -123,7 +123,7 @@
 		overflow: auto;
 	}
 
-	.logs-fieldset {
+	fieldset {
 		// With flexbox, prevents the fieldset from growing beyond its initial size
 		height: 0;
 	}
