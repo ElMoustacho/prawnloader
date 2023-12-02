@@ -8,16 +8,11 @@ use std::sync::Mutex;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use deezer::models::Track;
 use prawnloader::{
-    downloader::{Downloader, Id, ProgressEvent},
+    downloader::{Downloader, Id},
+    events::{Event, ProgressEvent},
     parsers::{normalize_url, ParsedId},
 };
 use tauri::{Manager, State};
-
-enum Event {
-    ProgressEvent(ProgressEvent),
-    AddToQueue(Track),
-    RemoveFromQueue(Track),
-}
 
 struct AppState {
     downloader: Downloader,
@@ -50,7 +45,7 @@ async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), Str
     for track in tracks {
         state
             .event_tx
-            .send(Event::AddToQueue(track.clone()))
+            .send(Event::AddToQueue(track.clone().into()))
             .unwrap();
         queue.push(track);
     }

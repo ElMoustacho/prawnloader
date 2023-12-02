@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { DownloadStatus, QueueSong } from 'src/types/music';
+	import type { QueueSong } from 'src/models/music';
 
 	export let queueSong: QueueSong;
 </script>
@@ -7,7 +7,7 @@
 <div class="list-item p-2">
 	<div class="list-item-image">
 		<figure class="image is-32x32">
-			<img src={queueSong.song.album.cover_small} alt="" />
+			<img src={queueSong.song.album.cover_url} alt="" />
 		</figure>
 	</div>
 
@@ -19,8 +19,8 @@
 		<div class="list-item-description">
 			<div class="is-flex is-justify-content-space-between">
 				<span title={queueSong.song.album.title}>{queueSong.song.album.title}</span>
-				<span title={queueSong.song.artist.name} class="is-single-line has-text-black-bis"
-					>{queueSong.song.artist.name}</span>
+				<span title={queueSong.song.artist} class="is-single-line has-text-black-bis"
+					>{queueSong.song.artist}</span>
 			</div>
 		</div>
 	</div>
