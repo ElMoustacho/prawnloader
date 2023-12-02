@@ -5,6 +5,6 @@ module '@tauri-apps/api' {
 
 	export interface Commands {
 		add_to_queue: [{ url: string }, void];
-		request_download: [{ trackId: number }, void];
+		request_download: [{ trackId: string }, void];
 	}
 }

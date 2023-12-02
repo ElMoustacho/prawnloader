@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { queue } from '$lib/ts/stores';
+	import { invoke } from '@tauri-apps/api';
 	import type { QueueSong } from 'src/models/music';
 
 	export let queueSong: QueueSong;
@@ -22,6 +24,26 @@
 				<span title={queueSong.song.artist} class="is-single-line has-text-black-bis"
 					>{queueSong.song.artist}</span>
 			</div>
+		</div>
+	</div>
+
+	<div class="list-item-controls">
+		<div class="buttons is-right">
+			<button
+				class="button"
+				on:click={() => invoke('request_download', { trackId: queueSong.song.id })}>
+				<span class="icon is-small">
+					<i class="fas fa-download" />
+				</span>
+			</button>
+			<button
+				class="button is-danger"
+				on:click={() =>
+					queue.update(queue => queue.filter(x => x.song.id !== queueSong.song.id))}>
+				<span class="icon is-small">
+					<i class="fas fa-trash" />
+				</span>
+			</button>
 		</div>
 	</div>
 </div>

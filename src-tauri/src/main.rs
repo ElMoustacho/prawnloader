@@ -54,7 +54,10 @@ async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), Str
 }
 
 #[tauri::command]
-async fn request_download(track_id: Id, state: State<'_, AppState>) -> Result<(), String> {
+async fn request_download(track_id: String, state: State<'_, AppState>) -> Result<(), String> {
+    let track_id: Id = track_id
+        .parse()
+        .map_err(|_| "Id could not be converter to integer")?;
     let mut queue = state.queue.lock().unwrap();
     let index = queue
         .iter()
