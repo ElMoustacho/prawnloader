@@ -22,12 +22,15 @@
 		});
 
 		listen('start', e => {
-			$queue.forEach(queueSong => {
-				if (queueSong.song.id == e.payload.id) {
-					queueSong.download_state = 'Downloading';
-				}
-			});
-			$queue = $queue;
+			const song = e.payload;
+			const firstSongIndex = $queue.findIndex(
+				queueSong =>
+					queueSong.song.id === song.id && queueSong.download_state === 'Inactive',
+			);
+
+			if (firstSongIndex < 0) return;
+
+			$queue[firstSongIndex].download_state = 'Downloading';
 		});
 
 		listen('finish', e => {

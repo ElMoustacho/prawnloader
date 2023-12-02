@@ -10,6 +10,7 @@ use deezer::models::Track;
 use prawnloader::{
     downloader::{Downloader, Id},
     events::{Event, ProgressEvent},
+    models::music::Song,
     parsers::{normalize_url, ParsedId},
 };
 use tauri::{Manager, State};
@@ -98,17 +99,17 @@ async fn main() {
                         Event::ProgressEvent(progress_event) => {
                             match progress_event {
                                 ProgressEvent::Waiting(track) => {
-                                    handle.emit_all("waiting", track).unwrap()
+                                    handle.emit_all("waiting", Song::from(track)).unwrap()
                                 }
                                 ProgressEvent::Start(track) => {
-                                    handle.emit_all("start", track).unwrap()
+                                    handle.emit_all("start", Song::from(track)).unwrap()
                                 }
                                 ProgressEvent::Finish(track) => {
-                                    handle.emit_all("finish", track).unwrap()
+                                    handle.emit_all("finish", Song::from(track)).unwrap()
                                 }
-                                ProgressEvent::DownloadError(track) => {
-                                    handle.emit_all("download_error", track).unwrap()
-                                }
+                                ProgressEvent::DownloadError(track) => handle
+                                    .emit_all("download_error", Song::from(track))
+                                    .unwrap(),
                             };
                         }
                         Event::AddToQueue(track) => handle.emit_all("add_to_queue", track).unwrap(),
