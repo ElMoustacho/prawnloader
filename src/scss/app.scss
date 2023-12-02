@@ -11,3 +11,9 @@
 body {
 	height: 100vh;
 }
+
+// 🍝 Allows to scroll lists without overflowing
+.max-overflow {
+	max-height: 100%;
+	overflow: auto;
+}

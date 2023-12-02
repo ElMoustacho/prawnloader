@@ -10,7 +10,7 @@
 	import { queue } from '$lib/ts/stores';
 	import { addLog, logs, Log } from '$lib/ts/log';
 	import QueueSong from '$lib/svelte/QueueSong.svelte';
-	import LogComponent from '$lib/svelte/Log.svelte';
+	import LogsList from '$lib/svelte/LogsList.svelte';
 
 	function addToQueue() {
 		if ($urls.length <= 0) return;
@@ -60,11 +60,7 @@
 		<fieldset class=" box is-flex-grow-1 max-overflow">
 			<legend class="subtitle m-0 is-unselectable">Logs</legend>
 			{#if $logs.length > 0}
-				<div class="logs-wrapper max-overflow">
-					{#each $logs as log}
-						<LogComponent {log} />
-					{/each}
-				</div>
+				<LogsList />
 			{:else}
 				<h2 class="subtitle pt-2 has-text-centered has-text-grey-lighter is-unselectable">
 					Logs empty
@@ -118,18 +114,6 @@
 		overflow-x: auto;
 		resize: none;
 		scrollbar-width: thin;
-	}
-
-	.logs-wrapper {
-		display: flex;
-		flex-direction: column-reverse;
-		overflow: hidden auto;
-	}
-
-	// 🍝 Allows to scroll lists without overflowing
-	.max-overflow {
-		max-height: 100%;
-		overflow: auto;
 	}
 
 	fieldset {
