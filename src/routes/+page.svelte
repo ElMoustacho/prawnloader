@@ -27,18 +27,15 @@
 		$queue.forEach(queueItem => {
 			if (queueItem.download_state === 'Downloading') return;
 
-			let id: number;
-			if (Number.isNaN((id = parseInt(queueItem.song.id)))) return;
-
 			invoke('request_download', {
-				trackId: id,
+				trackId: queueItem.song.id,
 			});
 		});
 	}
 
 	async function clearQueue() {
 		if ((await confirm('Do you want to clear the queue?')) === true) {
-			throw new Error('Not implemented yet.');
+			$queue = [];
 		}
 	}
 </script>
