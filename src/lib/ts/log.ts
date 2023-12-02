@@ -4,10 +4,12 @@ import { writable, type Writable } from 'svelte/store';
 export class Log {
 	success: boolean;
 	content: string;
+	timestamp: Date;
 
 	constructor(success: boolean, content: string) {
 		this.success = success;
 		this.content = content;
+		this.timestamp = new Date();
 	}
 }
 

@@ -8,6 +8,7 @@
 </script>
 
 <p class="py-1">
+	<span title={log.timestamp.toLocaleString()}>[{log.timestamp.toLocaleTimeString()}]</span>
 	<span class="tag {tagColor}">{prefix}</span>
 	<span>{log.content}</span>
 </p>
