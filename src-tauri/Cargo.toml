@@ -1,10 +1,10 @@
 [package]
 name = "prawnloader"
-version = "0.0.0"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+version = "0.1.0-beta"
+description = "A Tauri app to download music from different sources"
+authors = ["ElMoustacho"]
+license = "MIT"
+repository = "https://github.com/ElMoustacho/prawnloader"
 edition = "2021"
 rust-version = "1.57"
 
