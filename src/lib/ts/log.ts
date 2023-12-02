@@ -21,8 +21,7 @@ export function addLog(log: Log) {
 }
 
 export function clearLogs() {
-	// TODO
-	throw new Error('Not implemented');
+	logs.set([]);
 }
 
 export function formatLogSuccess(song: Song): Log {
