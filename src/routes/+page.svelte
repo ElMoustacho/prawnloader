@@ -24,7 +24,16 @@
 	}
 
 	function downloadQueue() {
-		throw new Error('Not implemented yet.');
+		$queue.forEach(queueItem => {
+			if (queueItem.download_state === 'Downloading') return;
+
+			let id: number;
+			if (Number.isNaN((id = parseInt(queueItem.song.id)))) return;
+
+			invoke('request_download', {
+				trackId: id,
+			});
+		});
 	}
 
 	async function clearQueue() {
