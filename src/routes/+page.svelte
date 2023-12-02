@@ -75,13 +75,13 @@
 
 	<div class="max-overflow column is-flex is-flex-direction-column">
 		<div class="pb-4 is-flex">
-			<button disabled class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
+			<button class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
 				<span class="icon">
 					<i class="fa fa-download" />
 				</span>
 				<span>Download all</span>
 			</button>
-			<button disabled class="mx-1 is-flex-grow-1 button is-danger" on:click={clearQueue}>
+			<button class="mx-1 is-flex-grow-1 button is-danger" on:click={clearQueue}>
 				<span class="icon">
 					<i class="fa fa-trash" />
 				</span>
@@ -89,7 +89,7 @@
 			</button>
 		</div>
 
-		<fieldset class=" block box list has-overflow-ellipsis is-flex-grow-1">
+		<fieldset class="block box has-overflow-ellipsis is-flex-grow-1">
 			<legend class="subtitle m-0 is-unselectable">Queue</legend>
 			{#if $queue.length > 0}
 				<div class="list max-overflow">
