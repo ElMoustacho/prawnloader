@@ -40,8 +40,8 @@
 	}
 </script>
 
-<div class="columns m-0 is-flex-grow-1 max-overflow">
-	<div class="max-overflow column is-flex is-flex-direction-column">
+<div class="columns is-desktop is-maxheight">
+	<div class="column is-flex is-flex-direction-column">
 		<textarea
 			class="textarea block mb-4"
 			placeholder="Enter one URL per line"
@@ -54,7 +54,7 @@
 			<span>Add to queue</span>
 		</button>
 
-		<fieldset class="box is-flex-grow-1 max-overflow">
+		<fieldset class="box is-flex-grow-1">
 			<legend class="subtitle m-0 is-unselectable" style="width: 100%;"
 				>Logs
 				<button
@@ -76,7 +76,7 @@
 		</fieldset>
 	</div>
 
-	<div class="max-overflow column is-flex is-flex-direction-column">
+	<div class="column is-flex is-flex-direction-column">
 		<div class="pb-4 is-flex">
 			<button class="mx-1 is-flex-grow-1 button is-primary" on:click={downloadQueue}>
 				<span class="icon">

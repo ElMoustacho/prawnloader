@@ -60,7 +60,7 @@
 	</ul>
 </div>
 
-<div class="container is-widescreen is-flex is-flex-direction-column">
+<div class="container is-flex is-flex-direction-column">
 	<slot />
 </div>
 
