@@ -8,7 +8,7 @@
 	import { invoke } from '@tauri-apps/api';
 	import { confirm } from '@tauri-apps/api/dialog';
 	import { queue } from '$lib/ts/stores';
-	import { addLog, logs, Log } from '$lib/ts/log';
+	import { addLog, logs, Log, clearLogs } from '$lib/ts/log';
 	import QueueSong from '$lib/svelte/QueueSong.svelte';
 	import LogsList from '$lib/svelte/LogsList.svelte';
 
@@ -54,8 +54,18 @@
 			<span>Add to queue</span>
 		</button>
 
-		<fieldset class=" box is-flex-grow-1 max-overflow">
-			<legend class="subtitle m-0 is-unselectable">Logs</legend>
+		<fieldset class="box is-flex-grow-1 max-overflow">
+			<legend class="subtitle m-0 is-unselectable" style="width: 100%;"
+				>Logs
+				<button
+					class="button is-bordered is-pulled-right is-rounded s-y_bCXRrkrYfP"
+					on:click={clearLogs}>
+					<span class="icon">
+						<i class="fa fa-trash" />
+					</span>
+					<span>Clear logs</span>
+				</button>
+			</legend>
 			{#if $logs.length > 0}
 				<LogsList />
 			{:else}
