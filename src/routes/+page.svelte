@@ -40,7 +40,7 @@
 	}
 </script>
 
-<div class="columns is-desktop is-maxheight">
+<div class="columns is-mobile is-maxheight">
 	<div class="column is-flex is-flex-direction-column">
 		<textarea
 			class="textarea block mb-4"
@@ -110,9 +110,6 @@
 </div>
 
 <style lang="scss">
-	@import 'bulma/sass/utilities/derived-variables.sass';
-	@import 'bulma/sass/utilities/functions.sass';
-
 	.textarea {
 		// 6 lines times the line-height (1.5)
 		height: 6 * 1.5em;
