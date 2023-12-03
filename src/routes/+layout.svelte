@@ -63,7 +63,7 @@
 	</ul>
 </div>
 
-<div class="container is-flex is-flex-direction-column">
+<div class="container is-fluid is-flex is-flex-direction-column">
 	<slot />
 </div>
 
