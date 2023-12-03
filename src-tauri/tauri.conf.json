@@ -71,7 +71,9 @@
 				"height": 600,
 				"resizable": true,
 				"title": "prawnloader",
-				"width": 1100
+				"width": 1100,
+				"minWidth": 800,
+				"minHeight": 500
 			}
 		]
 	}
