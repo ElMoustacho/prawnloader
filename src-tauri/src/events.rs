@@ -4,7 +4,7 @@ use ts_rs::TS;
 use crate::{downloader::ProgressEvent, models::music::Song};
 
 #[derive(TS, Serialize)]
-#[ts(export, export_to = "../src/events.ts")]
+#[ts(export, export_to = "../src/events.ts", rename_all = "snake_case")]
 pub enum Event {
     Waiting(Song),
     Start(Song),
