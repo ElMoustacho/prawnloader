@@ -6,13 +6,20 @@ use deezer_downloader::{
     Downloader as DeezerDownloader, Song, SongMetadata,
 };
 use futures::future::join_all;
+use serde::Serialize;
 use tauri::api::path::download_dir;
-
-use crate::events::ProgressEvent;
 
 static DOWNLOAD_THREADS: u64 = 4;
 
 pub type Id = u64;
+
+#[derive(Debug, Clone, Serialize, strum_macros::Display)]
+pub enum ProgressEvent {
+    Waiting(Track),
+    Start(Track),
+    Finish(Track),
+    DownloadError(Track),
+}
 
 #[derive(Debug, strum_macros::Display)]
 pub enum DownloadStatus {

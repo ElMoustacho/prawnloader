@@ -35,6 +35,7 @@ deezer_downloader = { git = "https://github.com/zggff/deezer_downloader", rev = 
 url = "2.5.0"
 strum_macros = "0.25.3"
 thiserror = "1.0.50"
+ts-rs = "7.0.0"
 
 
 [features]

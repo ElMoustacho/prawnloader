@@ -8,8 +8,8 @@ use std::sync::Mutex;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use deezer::models::Track;
 use prawnloader::{
-    downloader::{Downloader, Id},
-    events::{Event, ProgressEvent},
+    downloader::{Downloader, Id, ProgressEvent},
+    events::Event,
     models::music::Song,
     parsers::{normalize_url, ParsedId},
 };
@@ -86,9 +86,7 @@ async fn main() {
             // Transfer any download event to the main event loop
             std::thread::spawn(move || {
                 while let Ok(progress_event) = progress_rx.recv() {
-                    _event_tx
-                        .send(Event::ProgressEvent(progress_event))
-                        .unwrap();
+                    _event_tx.send(Event::from(progress_event)).unwrap();
                 }
             });
 
@@ -96,22 +94,16 @@ async fn main() {
             std::thread::spawn(move || {
                 while let Ok(event) = _event_rx.recv() {
                     match event {
-                        Event::ProgressEvent(progress_event) => {
-                            match progress_event {
-                                ProgressEvent::Waiting(track) => {
-                                    handle.emit_all("waiting", Song::from(track)).unwrap()
-                                }
-                                ProgressEvent::Start(track) => {
-                                    handle.emit_all("start", Song::from(track)).unwrap()
-                                }
-                                ProgressEvent::Finish(track) => {
-                                    handle.emit_all("finish", Song::from(track)).unwrap()
-                                }
-                                ProgressEvent::DownloadError(track) => handle
-                                    .emit_all("download_error", Song::from(track))
-                                    .unwrap(),
-                            };
+                        Event::Waiting(track) => {
+                            handle.emit_all("waiting", Song::from(track)).unwrap()
                         }
+                        Event::Start(track) => handle.emit_all("start", Song::from(track)).unwrap(),
+                        Event::Finish(track) => {
+                            handle.emit_all("finish", Song::from(track)).unwrap()
+                        }
+                        Event::DownloadError(track) => handle
+                            .emit_all("download_error", Song::from(track))
+                            .unwrap(),
                         Event::AddToQueue(track) => handle.emit_all("add_to_queue", track).unwrap(),
                         Event::RemoveFromQueue(track) => {
                             handle.emit_all("remove_from_queue", track).unwrap()

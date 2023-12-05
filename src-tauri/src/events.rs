@@ -1,18 +1,26 @@
-use deezer::models::Track;
 use serde::Serialize;
+use ts_rs::TS;
 
-use crate::models::music::Song;
+use crate::{downloader::ProgressEvent, models::music::Song};
 
-#[derive(Debug, Clone, Serialize, strum_macros::Display)]
-pub enum ProgressEvent {
-    Waiting(Track),
-    Start(Track),
-    Finish(Track),
-    DownloadError(Track),
-}
-
+#[derive(TS, Serialize)]
+#[ts(export, export_to = "../src/events.ts")]
 pub enum Event {
-    ProgressEvent(ProgressEvent),
+    Waiting(Song),
+    Start(Song),
+    Finish(Song),
+    DownloadError(Song),
     AddToQueue(Song),
     RemoveFromQueue(Song),
+}
+
+impl From<ProgressEvent> for Event {
+    fn from(event: ProgressEvent) -> Self {
+        match event {
+            ProgressEvent::Waiting(track) => Self::Waiting(Song::from(track)),
+            ProgressEvent::Start(track) => Self::Start(Song::from(track)),
+            ProgressEvent::Finish(track) => Self::Finish(Song::from(track)),
+            ProgressEvent::DownloadError(track) => Self::DownloadError(Song::from(track)),
+        }
+    }
 }

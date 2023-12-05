@@ -1,14 +1,17 @@
 use deezer::models::Track;
 use serde::Serialize;
+use ts_rs::TS;
 use ytextract::Video;
 
-#[derive(Serialize, Clone)]
+#[derive(TS, Serialize, Clone)]
+#[ts(export, export_to = "../src/models/")]
 pub struct Album {
     pub title: String,
     pub cover_url: String,
 }
 
-#[derive(Serialize, Clone)]
+#[derive(TS, Serialize, Clone)]
+#[ts(export, export_to = "../src/models/")]
 pub struct Song {
     pub id: String,
     pub title: String,
