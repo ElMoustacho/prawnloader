@@ -8,8 +8,8 @@ use std::sync::Mutex;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use deezer::models::Track;
 use prawnloader::{
-    downloader::{Downloader, Id},
-    events::{Event, ProgressEvent},
+    downloader::{Downloader, Id, ProgressEvent},
+    events::Event,
     models::music::Song,
     parsers::{normalize_url, ParsedId},
 };

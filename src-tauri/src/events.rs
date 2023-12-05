@@ -1,15 +1,4 @@
-use deezer::models::Track;
-use serde::Serialize;
-
-use crate::models::music::Song;
-
-#[derive(Debug, Clone, Serialize, strum_macros::Display)]
-pub enum ProgressEvent {
-    Waiting(Track),
-    Start(Track),
-    Finish(Track),
-    DownloadError(Track),
-}
+use crate::{downloader::ProgressEvent, models::music::Song};
 
 pub enum Event {
     ProgressEvent(ProgressEvent),
