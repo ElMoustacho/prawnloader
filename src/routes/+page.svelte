@@ -5,7 +5,7 @@
 </script>
 
 <script lang="ts">
-	import { invoke } from '@tauri-apps/api';
+	import { invoke } from '$lib/tauri-wrapper';
 	import { confirm } from '@tauri-apps/api/dialog';
 	import { queue } from '$lib/stores';
 	import { addLog, logs, Log, clearLogs } from '$lib/log';
