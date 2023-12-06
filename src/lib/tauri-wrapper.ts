@@ -6,6 +6,7 @@ import {
 } from '@tauri-apps/api/event';
 import type { Event } from '$models/Event';
 import { invoke } from '@tauri-apps/api';
+import type { Song } from '$models/Song';
 
 type EventMap = {
 	[K in Event['type']]: Extract<Event, { type: K }>['payload'];
@@ -30,7 +31,7 @@ type CommandArgs<C extends Command> = Commands[C][0];
 type CommandReturn<C extends Command> = Commands[C][1];
 
 export interface Commands {
-	add_to_queue: [{ url: string }, void];
+	get_songs: [{ url: string }, Song[]];
 	request_download: [{ trackId: string }, void];
 }
 

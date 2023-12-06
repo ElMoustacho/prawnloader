@@ -13,14 +13,6 @@
 
 	onMount(() => {
 		// Download related event listeners
-		listen('add_to_queue', e => {
-			$queue.push({
-				download_state: 'Inactive',
-				song: e.payload,
-			});
-			$queue = $queue;
-		});
-
 		listen('start', e => {
 			const song = e.payload;
 			const firstSongIndex = $queue.findIndex(

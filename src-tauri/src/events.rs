@@ -12,7 +12,6 @@ pub enum Event {
     Start(Song),
     Finish(Song),
     DownloadError(Song),
-    AddToQueue(Song),
     RemoveFromQueue(Song),
 }
 

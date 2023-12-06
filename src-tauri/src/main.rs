@@ -3,10 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use std::sync::Mutex;
-
 use crossbeam_channel::{unbounded, Receiver, Sender};
-use deezer::models::Track;
 use prawnloader::{
     downloader::{Downloader, Id},
     events::Event,
@@ -17,13 +14,12 @@ use tauri::{Manager, State};
 
 struct AppState {
     downloader: Downloader,
-    queue: Mutex<Vec<Track>>,
     event_tx: Sender<Event>,
     event_rx: Receiver<Event>,
 }
 
 #[tauri::command]
-async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), String> {
+async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>, String> {
     let parsed_id = normalize_url(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
@@ -42,16 +38,9 @@ async fn add_to_queue(url: String, state: State<'_, AppState>) -> Result<(), Str
         ParsedId::YoutubeTrack(id) => todo!("YouTube not implemented yet."),
     };
 
-    let mut queue = state.queue.lock().unwrap();
-    for track in tracks {
-        state
-            .event_tx
-            .send(Event::AddToQueue(track.clone().into()))
-            .unwrap();
-        queue.push(track);
-    }
+    let songs = tracks.into_iter().map(|track| Song::from(track)).collect();
 
-    Ok(())
+    Ok(songs)
 }
 
 #[tauri::command]
@@ -59,12 +48,12 @@ async fn request_download(track_id: String, state: State<'_, AppState>) -> Resul
     let track_id: Id = track_id
         .parse()
         .map_err(|_| "Id could not be converter to integer")?;
-    let mut queue = state.queue.lock().unwrap();
-    let index = queue
-        .iter()
-        .position(|x| x.id == track_id)
-        .ok_or("Track with id {track_id} not found")?;
-    let track = queue.remove(index);
+
+    let track = state
+        .downloader
+        .get_track(track_id)
+        .await
+        .ok_or(format!("Unable to find track with id {track_id}"))?;
 
     state.downloader.request_download(track);
 
@@ -107,7 +96,6 @@ async fn main() {
                         Event::DownloadError(track) => {
                             handle.emit_all(event_name, Song::from(track)).unwrap()
                         }
-                        Event::AddToQueue(track) => handle.emit_all(event_name, track).unwrap(),
                         Event::RemoveFromQueue(track) => {
                             handle.emit_all(event_name, track).unwrap()
                         }
@@ -117,14 +105,13 @@ async fn main() {
 
             app.manage(AppState {
                 downloader,
-                queue: Mutex::default(),
                 event_tx,
                 event_rx,
             });
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![add_to_queue, request_download])
+        .invoke_handler(tauri::generate_handler![get_songs, request_download])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

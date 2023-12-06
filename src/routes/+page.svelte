@@ -18,7 +18,19 @@
 			.trim()
 			.split('\n')
 			.forEach(url =>
-				invoke('add_to_queue', { url }).catch(reason => addLog(new Log(false, reason))),
+				invoke('get_songs', { url }).then(
+					songs => {
+						for (let song of songs) {
+							$queue.push({
+								download_state: 'Inactive',
+								song,
+							});
+
+							$queue = $queue;
+						}
+					},
+					reason => addLog(new Log(false, reason)),
+				),
 			);
 		$urls = '';
 	}
