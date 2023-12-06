@@ -1,4 +1,4 @@
-import type { Song } from '../../models/Song';
+import type { Song } from '$models/Song';
 import { writable, type Writable } from 'svelte/store';
 
 export class Log {

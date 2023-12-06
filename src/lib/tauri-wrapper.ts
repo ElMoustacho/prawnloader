@@ -4,7 +4,7 @@ import {
 	type EventCallback,
 	type UnlistenFn,
 } from '@tauri-apps/api/event';
-import type { Event } from '../events';
+import type { Event } from '$models/Event';
 import { invoke } from '@tauri-apps/api';
 
 type EventMap = {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Log } from '$lib/ts/log';
+	import type { Log } from '$lib/log';
 
 	export let log: Log;
 

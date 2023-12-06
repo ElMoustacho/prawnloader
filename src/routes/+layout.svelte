@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/ts/log';
+	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/log';
 	import { listen } from '$lib/tauri-wrapper';
-	import { queue } from '$lib/ts/stores';
+	import { queue } from '$lib/stores';
 	import { onMount } from 'svelte';
 
 	import '../scss/app.scss';

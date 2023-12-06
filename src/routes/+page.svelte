@@ -7,10 +7,10 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api';
 	import { confirm } from '@tauri-apps/api/dialog';
-	import { queue } from '$lib/ts/stores';
-	import { addLog, logs, Log, clearLogs } from '$lib/ts/log';
-	import QueueSong from '$lib/svelte/QueueSong.svelte';
-	import LogsList from '$lib/svelte/LogsList.svelte';
+	import { queue } from '$lib/stores';
+	import { addLog, logs, Log, clearLogs } from '$lib/log';
+	import QueueSong from '$lib/components/QueueSong.svelte';
+	import LogsList from '$lib/components/LogsList.svelte';
 
 	function addToQueue() {
 		if ($urls.length <= 0) return;

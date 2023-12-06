@@ -1,4 +1,4 @@
-import type { Song } from 'src/models/Song';
+import type { Song } from '$models/Song';
 
 type DownloadStatus = 'Downloading' | 'Inactive';
 

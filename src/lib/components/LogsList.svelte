@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { logs, type Log } from '$lib/ts/log';
+	import { logs, type Log } from '$lib/log';
 	import { onMount } from 'svelte';
 	import LogComponent from './Log.svelte';
 
