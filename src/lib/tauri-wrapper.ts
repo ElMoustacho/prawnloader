@@ -4,29 +4,26 @@ import {
 	type EventCallback,
 	type UnlistenFn,
 } from '@tauri-apps/api/event';
-import type { Song } from './ts/music';
+import type { Event } from '../events';
 import { invoke } from '@tauri-apps/api';
 
-type Events = {
-	waiting: Song;
-	start: Song;
-	finish: Song;
-	download_error: Song;
-	add_to_queue: Song;
-	remove_from_queue: Song;
+type EventMap = {
+	[K in Event['type']]: Extract<Event, { type: K }>['payload'];
 };
 
-type EventReturn<C extends keyof Events> = Events[C];
+type EventName = keyof EventMap;
+type EventPayload<T extends EventName> = EventMap[T];
 
-function _listen<T extends keyof Events>(
+function _listen<T extends EventName>(
 	event: T,
-	handler: EventCallback<EventReturn<T>>
+	handler: EventCallback<EventPayload<T>>
 ): Promise<UnlistenFn>;
 function _listen<T>(event: TauriEvent, handler: EventCallback<T>): Promise<UnlistenFn>;
 function _listen<T>(event: string, handler: EventCallback<T>): Promise<UnlistenFn> {
 	return listen(event, handler);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type NoParams = Record<string, never>;
 type Command = keyof Commands;
 type CommandArgs<C extends Command> = Commands[C][0];

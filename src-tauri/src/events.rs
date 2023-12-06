@@ -3,8 +3,10 @@ use ts_rs::TS;
 
 use crate::{downloader::ProgressEvent, models::music::Song};
 
-#[derive(TS, Serialize)]
-#[ts(export, export_to = "../src/events.ts", rename_all = "snake_case")]
+#[derive(Clone, TS, Serialize, strum_macros::Display)]
+#[ts(export, export_to = "../src/events.ts")]
+#[serde(rename_all = "snake_case", tag = "type", content = "payload")]
+#[strum(serialize_all = "snake_case")]
 pub enum Event {
     Waiting(Song),
     Start(Song),
@@ -22,5 +24,19 @@ impl From<ProgressEvent> for Event {
             ProgressEvent::Finish(track) => Self::Finish(Song::from(track)),
             ProgressEvent::DownloadError(track) => Self::DownloadError(Song::from(track)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn name_is_snake_case() {
+        let event = Event::Waiting(Song::default());
+        assert_eq!(event.to_string()[..], *"waiting");
+
+        let event = Event::RemoveFromQueue(Song::default());
+        assert_eq!(event.to_string()[..], *"remove_from_queue");
     }
 }

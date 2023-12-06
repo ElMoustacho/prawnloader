@@ -8,7 +8,7 @@ use std::sync::Mutex;
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use deezer::models::Track;
 use prawnloader::{
-    downloader::{Downloader, Id, ProgressEvent},
+    downloader::{Downloader, Id},
     events::Event,
     models::music::Song,
     parsers::{normalize_url, ParsedId},
@@ -93,20 +93,23 @@ async fn main() {
             // Transfer events to front-end
             std::thread::spawn(move || {
                 while let Ok(event) = _event_rx.recv() {
+                    let event_name = &event.to_string()[..];
                     match event {
                         Event::Waiting(track) => {
-                            handle.emit_all("waiting", Song::from(track)).unwrap()
+                            handle.emit_all(event_name, Song::from(track)).unwrap()
                         }
-                        Event::Start(track) => handle.emit_all("start", Song::from(track)).unwrap(),
+                        Event::Start(track) => {
+                            handle.emit_all(event_name, Song::from(track)).unwrap()
+                        }
                         Event::Finish(track) => {
-                            handle.emit_all("finish", Song::from(track)).unwrap()
+                            handle.emit_all(event_name, Song::from(track)).unwrap()
                         }
-                        Event::DownloadError(track) => handle
-                            .emit_all("download_error", Song::from(track))
-                            .unwrap(),
-                        Event::AddToQueue(track) => handle.emit_all("add_to_queue", track).unwrap(),
+                        Event::DownloadError(track) => {
+                            handle.emit_all(event_name, Song::from(track)).unwrap()
+                        }
+                        Event::AddToQueue(track) => handle.emit_all(event_name, track).unwrap(),
                         Event::RemoveFromQueue(track) => {
-                            handle.emit_all("remove_from_queue", track).unwrap()
+                            handle.emit_all(event_name, track).unwrap()
                         }
                     }
                 }

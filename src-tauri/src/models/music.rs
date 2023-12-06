@@ -3,14 +3,14 @@ use serde::Serialize;
 use ts_rs::TS;
 use ytextract::Video;
 
-#[derive(TS, Serialize, Clone)]
+#[derive(TS, Serialize, Clone, Default)]
 #[ts(export, export_to = "../src/models/")]
 pub struct Album {
     pub title: String,
     pub cover_url: String,
 }
 
-#[derive(TS, Serialize, Clone)]
+#[derive(TS, Serialize, Clone, Default)]
 #[ts(export, export_to = "../src/models/")]
 pub struct Song {
     pub id: String,

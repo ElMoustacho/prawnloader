@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/ts/log';
+	import { listen } from '$lib/tauri-wrapper';
 	import { queue } from '$lib/ts/stores';
-	import { listen } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
 
 	import '../scss/app.scss';
