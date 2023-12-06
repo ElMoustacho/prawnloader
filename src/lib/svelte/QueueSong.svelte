@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { queue } from '$lib/ts/stores';
 	import { invoke } from '@tauri-apps/api';
-	import type { QueueSong } from 'src/models/music';
+	import type { QueueSong } from '../ts/music';
 
 	export let queueSong: QueueSong;
 </script>

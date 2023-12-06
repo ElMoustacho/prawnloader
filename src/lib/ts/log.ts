@@ -1,4 +1,4 @@
-import type { Song } from 'src/types/music';
+import type { Song } from '../../models/Song';
 import { writable, type Writable } from 'svelte/store';
 
 export class Log {
@@ -27,7 +27,7 @@ export function clearLogs() {
 }
 
 export function formatLogSuccess(song: Song): Log {
-	return new Log(true, `Downloaded ${song.artist.name} - ${song.title}`);
+	return new Log(true, `Downloaded ${song.artist} - ${song.title}`);
 }
 
 export function formatLogAlbumNotFound(albumId: number): Log {
@@ -39,5 +39,5 @@ export function formatLogSongNotFound(songId: number): Log {
 }
 
 export function formatLogDownloadError(song: Song): Log {
-	return new Log(false, `Error while downloading ${song.artist.name} - ${song.title}`);
+	return new Log(false, `Error while downloading ${song.artist} - ${song.title}`);
 }
