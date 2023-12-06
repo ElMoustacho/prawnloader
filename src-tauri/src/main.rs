@@ -3,7 +3,7 @@
     windows_subsystem = "windows"
 )]
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::unbounded;
 use prawnloader::{
     downloader::{Downloader, Id},
     events::Event,
@@ -14,8 +14,6 @@ use tauri::{Manager, State};
 
 struct AppState {
     downloader: Downloader,
-    event_tx: Sender<Event>,
-    event_rx: Receiver<Event>,
 }
 
 #[tauri::command]
@@ -84,18 +82,10 @@ async fn main() {
                 while let Ok(event) = _event_rx.recv() {
                     let event_name = &event.to_string()[..];
                     match event {
-                        Event::Waiting(track) => {
-                            handle.emit_all(event_name, Song::from(track)).unwrap()
-                        }
-                        Event::Start(track) => {
-                            handle.emit_all(event_name, Song::from(track)).unwrap()
-                        }
-                        Event::Finish(track) => {
-                            handle.emit_all(event_name, Song::from(track)).unwrap()
-                        }
-                        Event::DownloadError(track) => {
-                            handle.emit_all(event_name, Song::from(track)).unwrap()
-                        }
+                        Event::Waiting(track) => handle.emit_all(event_name, track).unwrap(),
+                        Event::Start(track) => handle.emit_all(event_name, track).unwrap(),
+                        Event::Finish(track) => handle.emit_all(event_name, track).unwrap(),
+                        Event::DownloadError(track) => handle.emit_all(event_name, track).unwrap(),
                         Event::RemoveFromQueue(track) => {
                             handle.emit_all(event_name, track).unwrap()
                         }
@@ -103,11 +93,7 @@ async fn main() {
                 }
             });
 
-            app.manage(AppState {
-                downloader,
-                event_tx,
-                event_rx,
-            });
+            app.manage(AppState { downloader });
 
             Ok(())
         })
