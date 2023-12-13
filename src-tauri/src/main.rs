@@ -8,7 +8,7 @@ use prawnloader::{
     downloader::{DeezerId, Downloader},
     events::Event,
     models::music::Song,
-    parsers::{normalize_url, ParsedId},
+    parsers::{parse_id, ParsedId},
 };
 use tauri::{Manager, State};
 
@@ -18,7 +18,7 @@ struct AppState {
 
 #[tauri::command]
 async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>, String> {
-    let parsed_id = normalize_url(&url)
+    let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
     let tracks = match parsed_id {

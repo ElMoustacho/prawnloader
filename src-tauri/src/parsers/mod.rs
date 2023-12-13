@@ -4,26 +4,27 @@
 
 use std::{collections::HashMap, num::ParseIntError};
 
-use color_eyre::eyre::eyre;
 use url::Url;
 
 use crate::downloader::DeezerId;
 
-type Result = std::result::Result<ParsedId, Error>;
+type ParseResult = std::result::Result<ParsedId, Error>;
 type YoutubeId = String;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error("invalid URL {0}")]
-    InvalidURL(#[from] color_eyre::eyre::Error),
+    InvalidURL(String),
     #[error("invalid ID {0}")]
     InvalidId(#[from] ParseIntError),
     #[error("no parse found for URL {0}")]
     NoParser(String),
     #[error("song with id {0} not found")]
-    SongNotFoundError(DeezerId),
+    SongNotFound(DeezerId),
     #[error("album with id {0} not found")]
-    AlbumNotFoundError(DeezerId),
+    AlbumNotFound(DeezerId),
+    #[error("unable to parse url {0}")]
+    UnparsableUrl(#[from] url::ParseError),
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -34,44 +35,65 @@ pub enum ParsedId {
     YoutubePlaylist(YoutubeId),
 }
 
-pub async fn normalize_url(url: &str) -> Result {
-    let url = Url::parse(url).map_err(|err| color_eyre::eyre::Error::from(err))?;
+pub async fn parse_id(url: &str) -> ParseResult {
+    static PARSERS: [fn(url: &Url) -> ParseResult; 2] = [parse_deezer, parse_youtube];
 
-    match url.domain() {
-        Some("www.youtube.com") => Ok(parse_youtube(url)?),
-        Some("www.deezer.com") => Ok(parse_deezer(url)?),
-        Some("deezer.page.link") => {
-            let url = follow_redirects(url).await;
-            Ok(parse_deezer(url)?)
+    let url = normalize_url(url).await?;
+
+    for parser in PARSERS {
+        if let Ok(id) = parser(&url) {
+            return Ok(id);
         }
-        _ => Err(Error::NoParser(url.to_string())),
     }
+
+    Err(Error::NoParser(url.to_string()))
 }
 
-fn parse_youtube(url: Url) -> Result {
+/// .Standardizes URLs to be understood by parsers.
+///
+/// # Errors
+///
+/// This function will return an error if the string is not a valid URL.
+async fn normalize_url(url: &str) -> std::result::Result<Url, url::ParseError> {
+    let mut url = Url::parse(url)?;
+
+    match url.domain() {
+        Some("music.youtube.com") | Some("m.youtube.com") => {
+            url.set_host(Some("www.youtube.com"));
+        }
+        Some("deezer.page.link") => {
+            url = follow_redirects(url).await;
+        }
+        _ => {}
+    };
+
+    Ok(url)
+}
+
+fn parse_youtube(url: &Url) -> ParseResult {
     let query_pairs: HashMap<_, _> = url.query_pairs().collect();
 
     let id =  match url.path() {
         "/watch" if query_pairs.contains_key("v") => ParsedId::YoutubeVideo(query_pairs.get("v").unwrap().to_string()),
         "/playlist" if query_pairs.contains_key("list") => ParsedId::YoutubePlaylist(query_pairs.get("list").unwrap().to_string()),
         _ => {
-            return Err(Error::InvalidURL(eyre!(
-                "URL must be in the format \"www.youtube.com/watch?v=abcdefg\" or \"www.youtube.com/playlist?list=abcdefg\""
-            )))
+            return Err(Error::InvalidURL("URL must be in the format \"www.youtube.com/watch?v=abcdefg\" or \"www.youtube.com/playlist?list=abcdefg\"".to_string()))
         }
     };
 
     Ok(id)
 }
 
-fn parse_deezer(url: Url) -> Result {
-    let paths = url.path_segments().ok_or(eyre!("Invalid segments"))?;
+fn parse_deezer(url: &Url) -> ParseResult {
+    let paths = url
+        .path_segments()
+        .ok_or(Error::InvalidURL("URL cannot be a base.".to_string()))?;
     let last_two: Vec<_> = paths.rev().take(2).collect();
 
     if last_two.len() < 2 {
-        return Err(Error::InvalidURL(eyre!(
-            "Expected at least 2 path segments."
-        )));
+        return Err(Error::InvalidURL(
+            "Expected at least 2 path segments.".to_string(),
+        ));
     }
 
     let id = last_two[0].parse::<DeezerId>()?;
@@ -80,7 +102,7 @@ fn parse_deezer(url: Url) -> Result {
     match track_album {
         "track" => Ok(ParsedId::DeezerTrack(id)),
         "album" => Ok(ParsedId::DeezerAlbum(id)),
-        _ => Err(Error::InvalidURL(eyre!("Invalid {track_album}"))),
+        _ => Err(Error::InvalidURL("Invalid {track_album}".to_string())),
     }
 }
 
@@ -104,19 +126,19 @@ mod tests {
     #[tokio::test]
     async fn finds_correct_parser() {
         assert_eq!(
-            normalize_url(DEEZER_ALBUM_URL)
+            parse_id(DEEZER_ALBUM_URL)
                 .await
                 .expect("URL should be valid"),
             ParsedId::DeezerAlbum(63318982)
         );
         assert_eq!(
-            normalize_url(DEEZER_TRACK_URL)
+            parse_id(DEEZER_TRACK_URL)
                 .await
                 .expect("URL should be valid"),
             ParsedId::DeezerTrack(498467242)
         );
         assert_eq!(
-            normalize_url(YOUTUBE_VIDEO_URL)
+            parse_id(YOUTUBE_VIDEO_URL)
                 .await
                 .expect("URL should be valid"),
             ParsedId::YoutubeVideo("dQw4w9WgXcQ".to_string())
@@ -126,7 +148,7 @@ mod tests {
     #[test]
     fn parses_deezer_album() {
         let url = Url::parse(DEEZER_ALBUM_URL).expect("URL should be valid");
-        let parsed_id = parse_deezer(url).expect("URL should be valid");
+        let parsed_id = parse_deezer(&url).expect("URL should be valid");
         let expected_id: u64 = 63318982;
 
         assert_eq!(parsed_id, ParsedId::DeezerAlbum(expected_id));
@@ -135,7 +157,7 @@ mod tests {
     #[test]
     fn parses_deezer_track() {
         let url = Url::parse(DEEZER_TRACK_URL).expect("URL should be valid");
-        let parsed_id = parse_deezer(url).expect("URL should be valid");
+        let parsed_id = parse_deezer(&url).expect("URL should be valid");
         let expected_id: u64 = 498467242;
 
         assert_eq!(parsed_id, ParsedId::DeezerTrack(expected_id));
@@ -144,7 +166,7 @@ mod tests {
     #[test]
     fn parses_youtube_video() {
         let url = Url::parse(YOUTUBE_VIDEO_URL).expect("URL should be valid");
-        let parsed_id = parse_youtube(url).expect("URL should be valid");
+        let parsed_id = parse_youtube(&url).expect("URL should be valid");
         let expected_id = "dQw4w9WgXcQ".to_string();
 
         assert_eq!(parsed_id, ParsedId::YoutubeVideo(expected_id));
@@ -153,7 +175,7 @@ mod tests {
     #[test]
     fn parses_youtube_playlist() {
         let url = Url::parse(YOUTUBE_PLAYLIST_URL).expect("URL should be valid");
-        let parsed_id = parse_youtube(url).expect("URL should be valid");
+        let parsed_id = parse_youtube(&url).expect("URL should be valid");
         let expected_id = "PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".to_string();
 
         assert_eq!(parsed_id, ParsedId::YoutubePlaylist(expected_id));
