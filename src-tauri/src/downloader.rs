@@ -11,7 +11,7 @@ use tauri::api::path::download_dir;
 
 static DOWNLOAD_THREADS: u64 = 4;
 
-pub type Id = u64;
+pub type DeezerId = u64;
 
 #[derive(Debug, Clone, Serialize, strum_macros::Display)]
 pub enum ProgressEvent {

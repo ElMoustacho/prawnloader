@@ -5,7 +5,7 @@
 
 use crossbeam_channel::unbounded;
 use prawnloader::{
-    downloader::{Downloader, Id},
+    downloader::{DeezerId, Downloader},
     events::Event,
     models::music::Song,
     parsers::{normalize_url, ParsedId},
@@ -33,7 +33,8 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
             .await
             .map(|x| vec![x])
             .ok_or(format!("Invalid track id {id}"))?,
-        ParsedId::YoutubeTrack(id) => todo!("YouTube not implemented yet."),
+        ParsedId::YoutubeVideo(id) => todo!("YouTube not implemented yet."),
+        ParsedId::YoutubePlaylist(id) => todo!("YouTube not implemented yet."),
     };
 
     let songs = tracks.into_iter().map(|track| Song::from(track)).collect();
@@ -43,7 +44,7 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
 
 #[tauri::command]
 async fn request_download(track_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let track_id: Id = track_id
+    let track_id: DeezerId = track_id
         .parse()
         .map_err(|_| "Id could not be converter to integer")?;
 

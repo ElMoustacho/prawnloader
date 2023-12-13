@@ -2,14 +2,15 @@
 // mod deezer;
 // mod youtube;
 
-use std::num::ParseIntError;
+use std::{collections::HashMap, num::ParseIntError};
 
 use color_eyre::eyre::eyre;
 use url::Url;
 
-use crate::downloader::Id;
+use crate::downloader::DeezerId;
 
 type Result = std::result::Result<ParsedId, Error>;
+type YoutubeId = String;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -20,16 +21,17 @@ pub enum Error {
     #[error("no parse found for URL {0}")]
     NoParser(String),
     #[error("song with id {0} not found")]
-    SongNotFoundError(Id),
+    SongNotFoundError(DeezerId),
     #[error("album with id {0} not found")]
-    AlbumNotFoundError(Id),
+    AlbumNotFoundError(DeezerId),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParsedId {
-    DeezerAlbum(Id),
-    DeezerTrack(Id),
-    YoutubeTrack(String),
+    DeezerAlbum(DeezerId),
+    DeezerTrack(DeezerId),
+    YoutubeVideo(YoutubeId),
+    YoutubePlaylist(YoutubeId),
 }
 
 pub async fn normalize_url(url: &str) -> Result {
@@ -47,7 +49,19 @@ pub async fn normalize_url(url: &str) -> Result {
 }
 
 fn parse_youtube(url: Url) -> Result {
-    todo!()
+    let query_pairs: HashMap<_, _> = url.query_pairs().collect();
+
+    let id =  match url.path() {
+        "/watch" if query_pairs.contains_key("v") => ParsedId::YoutubeVideo(query_pairs.get("v").unwrap().to_string()),
+        "/playlist" if query_pairs.contains_key("list") => ParsedId::YoutubePlaylist(query_pairs.get("list").unwrap().to_string()),
+        _ => {
+            return Err(Error::InvalidURL(eyre!(
+                "URL must be in the format \"www.youtube.com/watch?v=abcdefg\" or \"www.youtube.com/playlist?list=abcdefg\""
+            )))
+        }
+    };
+
+    Ok(id)
 }
 
 fn parse_deezer(url: Url) -> Result {
@@ -60,7 +74,7 @@ fn parse_deezer(url: Url) -> Result {
         )));
     }
 
-    let id = last_two[0].parse::<Id>()?;
+    let id = last_two[0].parse::<DeezerId>()?;
     let track_album = last_two[1];
 
     match track_album {
@@ -81,6 +95,8 @@ mod tests {
     use super::*;
 
     static YOUTUBE_VIDEO_URL: &str = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
+    static YOUTUBE_PLAYLIST_URL: &str =
+        "https://www.youtube.com/playlist?list=PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ";
     static DEEZER_ALBUM_URL: &str = "https://www.deezer.com/fr/album/63318982";
     static DEEZER_TRACK_URL: &str = "https://www.deezer.com/fr/track/498467242";
     static DEEZER_PAGE_LINK_URL: &str = "https://deezer.page.link/CWiy1BS7UeZqAnt56";
@@ -103,7 +119,7 @@ mod tests {
             normalize_url(YOUTUBE_VIDEO_URL)
                 .await
                 .expect("URL should be valid"),
-            ParsedId::YoutubeTrack("dQw4w9WgXcQ".to_string())
+            ParsedId::YoutubeVideo("dQw4w9WgXcQ".to_string())
         );
     }
 
@@ -123,6 +139,24 @@ mod tests {
         let expected_id: u64 = 498467242;
 
         assert_eq!(parsed_id, ParsedId::DeezerTrack(expected_id));
+    }
+
+    #[test]
+    fn parses_youtube_video() {
+        let url = Url::parse(YOUTUBE_VIDEO_URL).expect("URL should be valid");
+        let parsed_id = parse_youtube(url).expect("URL should be valid");
+        let expected_id = "dQw4w9WgXcQ".to_string();
+
+        assert_eq!(parsed_id, ParsedId::YoutubeVideo(expected_id));
+    }
+
+    #[test]
+    fn parses_youtube_playlist() {
+        let url = Url::parse(YOUTUBE_PLAYLIST_URL).expect("URL should be valid");
+        let parsed_id = parse_youtube(url).expect("URL should be valid");
+        let expected_id = "PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".to_string();
+
+        assert_eq!(parsed_id, ParsedId::YoutubePlaylist(expected_id));
     }
 
     #[tokio::test]
