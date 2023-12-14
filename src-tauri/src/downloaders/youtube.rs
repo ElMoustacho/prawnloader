@@ -1,6 +1,7 @@
 use crossbeam_channel::{unbounded, Sender};
 use futures::StreamExt;
-use rustube::download_best_quality;
+use rusty_ytdl::{VideoOptions, VideoQuality, VideoSearchOptions};
+use tauri::api::path::download_dir;
 use ytextract::Client;
 
 use crate::models::music::Song;
@@ -52,7 +53,10 @@ impl Downloader {
     }
 
     pub async fn get_song(&self, id: ytextract::video::Id) -> Option<Song> {
-        self.youtube_client.video(id).await.ok().map(|x| x.into())
+        let video = rusty_ytdl::Video::new(id.to_string()).ok()?;
+        let video_details = video.get_basic_info().await.ok()?.video_details;
+
+        Some(video_details.into())
     }
 
     pub async fn get_playlist_songs(&self, id: ytextract::playlist::Id) -> Option<Vec<Song>> {
@@ -70,6 +74,21 @@ impl Downloader {
 
 async fn download_song_from_video(
     video: &ytextract::video::Video,
-) -> Result<std::path::PathBuf, rustube::Error> {
-    download_best_quality(&video.id()[..]).await
+) -> Result<(), rusty_ytdl::VideoError> {
+    let id = &video.id()[..];
+
+    // TODO: Enable quality configuration
+    let options = VideoOptions {
+        quality: VideoQuality::Lowest,
+        filter: VideoSearchOptions::Audio,
+        ..Default::default()
+    };
+    let video = rusty_ytdl::Video::new_with_options(id, options).unwrap();
+    let video_details = video.get_basic_info().await?.video_details;
+
+    // TODO: Allow the target directory to be given.
+    let video_path = download_dir().unwrap().join(video_details.title);
+    video.download(video_path).await.unwrap();
+
+    Ok(())
 }

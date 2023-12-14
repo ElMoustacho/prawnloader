@@ -54,3 +54,19 @@ impl From<PlaylistVideo> for Song {
         }
     }
 }
+
+impl From<rusty_ytdl::VideoDetails> for Song {
+    fn from(video_details: rusty_ytdl::VideoDetails) -> Self {
+        let artist = video_details
+            .author
+            .map(|author| author.name)
+            .unwrap_or_default();
+
+        Self {
+            id: video_details.video_id,
+            title: video_details.title,
+            album: Album::default(),
+            artist,
+        }
+    }
+}

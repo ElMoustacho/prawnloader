@@ -36,6 +36,7 @@ url = "2.5.0"
 strum_macros = "0.25.3"
 thiserror = "1.0.50"
 ts-rs = "7.0.0"
+rusty_ytdl = "0.6.6"
 
 
 [features]
