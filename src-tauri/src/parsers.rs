@@ -1,4 +1,4 @@
-use std::{collections::HashMap, num::ParseIntError};
+use std::{num::ParseIntError, str::FromStr};
 
 use url::Url;
 
@@ -66,10 +66,17 @@ async fn normalize_url(url: &str) -> std::result::Result<Url, url::ParseError> {
 }
 
 fn parse_youtube(url: &Url) -> ParseResult {
-    let query_pairs: HashMap<_, _> = url.query_pairs().collect();
+    let url = &url[..];
 
-    // TODO
-    todo!("Parse youtube")
+    if let Ok(id) = ytextract::video::Id::from_str(url) {
+        return Ok(ParsedId::YoutubeVideo(id));
+    }
+
+    if let Ok(id) = ytextract::playlist::Id::from_str(url) {
+        return Ok(ParsedId::YoutubePlaylist(id));
+    }
+
+    return Err(Error::InvalidURL("URL is not valid.".to_string()));
 }
 
 fn parse_deezer(url: &Url) -> ParseResult {
