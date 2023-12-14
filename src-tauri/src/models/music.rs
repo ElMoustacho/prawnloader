@@ -1,16 +1,16 @@
 use deezer::models::Track;
 use serde::Serialize;
 use ts_rs::TS;
-use ytextract::Video;
+use ytextract::{playlist::Video as PlaylistVideo, Video};
 
-#[derive(TS, Serialize, Clone, Default)]
+#[derive(TS, Debug, Serialize, Clone, Default)]
 #[ts(export, export_to = "../src/models/")]
 pub struct Album {
     pub title: String,
     pub cover_url: String,
 }
 
-#[derive(TS, Serialize, Clone, Default)]
+#[derive(TS, Debug, Serialize, Clone, Default)]
 #[ts(export, export_to = "../src/models/")]
 pub struct Song {
     pub id: String,
@@ -35,6 +35,22 @@ impl From<Track> for Song {
 
 impl From<Video> for Song {
     fn from(video: Video) -> Self {
-        todo!("YouTube not implemented")
+        Self {
+            id: video.id().to_string(),
+            title: video.title().to_string(),
+            album: Album::default(),
+            artist: video.channel().name().to_string(),
+        }
+    }
+}
+
+impl From<PlaylistVideo> for Song {
+    fn from(video: PlaylistVideo) -> Self {
+        Self {
+            id: video.id().to_string(),
+            title: video.title().to_string(),
+            album: Album::default(),
+            artist: video.channel().name().to_string(),
+        }
     }
 }

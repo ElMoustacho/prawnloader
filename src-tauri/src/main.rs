@@ -5,7 +5,9 @@
 
 use crossbeam_channel::unbounded;
 use prawnloader::{
-    downloader::{DeezerId, Downloader},
+    downloaders::{
+        deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader, DeezerId,
+    },
     events::Event,
     models::music::Song,
     parsers::{parse_id, ParsedId},
@@ -13,7 +15,8 @@ use prawnloader::{
 use tauri::{Manager, State};
 
 struct AppState {
-    downloader: Downloader,
+    deezer_downloader: DeezerDownloader,
+    youtube_downloader: YoutubeDownloader,
 }
 
 #[tauri::command]
@@ -21,23 +24,32 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
     let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
-    let tracks = match parsed_id {
+    let songs: Vec<Song> = match parsed_id {
         ParsedId::DeezerAlbum(id) => state
-            .downloader
+            .deezer_downloader
             .get_album_tracks(id)
             .await
             .ok_or(format!("Invalid album id {id}"))?,
         ParsedId::DeezerTrack(id) => state
-            .downloader
+            .deezer_downloader
             .get_track(id)
             .await
-            .map(|x| vec![x])
+            .map(|x| vec![x.into()])
             .ok_or(format!("Invalid track id {id}"))?,
-        ParsedId::YoutubeVideo(id) => todo!("YouTube not implemented yet."),
-        ParsedId::YoutubePlaylist(id) => todo!("YouTube not implemented yet."),
+        ParsedId::YoutubeVideo(id) => state
+            .youtube_downloader
+            .get_song(id)
+            .await
+            .map(|x| vec![x])
+            .ok_or(format!("Invalid video id"))?,
+        ParsedId::YoutubePlaylist(id) => state
+            .youtube_downloader
+            .get_playlist_songs(id)
+            .await
+            .ok_or(format!("Invalid playlist id"))?,
     };
 
-    let songs = tracks.into_iter().map(|track| Song::from(track)).collect();
+    let songs = songs.into_iter().map(|track| Song::from(track)).collect();
 
     Ok(songs)
 }
@@ -48,39 +60,35 @@ async fn request_download(track_id: String, state: State<'_, AppState>) -> Resul
         .parse()
         .map_err(|_| "Id could not be converted to integer")?;
 
-    let track = state
-        .downloader
-        .get_track(track_id)
+    state
+        .deezer_downloader
+        .request_download(track_id)
         .await
-        .ok_or(format!("Unable to find track with id {track_id}"))?;
-
-    state.downloader.request_download(track);
-
-    Ok(())
+        .map_err(|err| err.to_string())
 }
 
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
         .setup(|app| {
-            let downloader = Downloader::new();
+            let (progress_tx, progress_rx) = unbounded();
             let (event_tx, event_rx) = unbounded();
 
-            let handle = app.handle();
-            let progress_rx = downloader.get_progress_rx();
+            let deezer_downloader = DeezerDownloader::new(progress_tx.clone());
+            let youtube_downloader = YoutubeDownloader::new(progress_tx.clone());
 
-            let (_event_tx, _event_rx) = (event_tx.clone(), event_rx.clone());
+            let handle = app.handle();
 
             // Transfer any download event to the main event loop
             std::thread::spawn(move || {
                 while let Ok(progress_event) = progress_rx.recv() {
-                    _event_tx.send(Event::from(progress_event)).unwrap();
+                    event_tx.send(Event::from(progress_event)).unwrap();
                 }
             });
 
             // Transfer events to front-end
             std::thread::spawn(move || {
-                while let Ok(event) = _event_rx.recv() {
+                while let Ok(event) = event_rx.recv() {
                     let event_name = &event.to_string()[..];
                     match event {
                         Event::Waiting(track) => handle.emit_all(event_name, track).unwrap(),
@@ -94,7 +102,10 @@ async fn main() {
                 }
             });
 
-            app.manage(AppState { downloader });
+            app.manage(AppState {
+                deezer_downloader,
+                youtube_downloader,
+            });
 
             Ok(())
         })

@@ -1,43 +1,26 @@
 use color_eyre::eyre::{eyre, Result};
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, Sender};
 use deezer::{models::Track, DeezerClient};
 use deezer_downloader::{
     song::{Album, Artist},
     Downloader as DeezerDownloader, Song, SongMetadata,
 };
 use futures::future::join_all;
-use serde::Serialize;
 use tauri::api::path::download_dir;
 
+use super::{replace_illegal_characters, DeezerId, ProgressEvent};
+
 static DOWNLOAD_THREADS: u64 = 4;
-
-pub type DeezerId = u64;
-
-#[derive(Debug, Clone, Serialize, strum_macros::Display)]
-pub enum ProgressEvent {
-    Waiting(Track),
-    Start(Track),
-    Finish(Track),
-    DownloadError(Track),
-}
-
-#[derive(Debug, strum_macros::Display)]
-pub enum DownloadStatus {
-    Downloading,
-    Inactive,
-}
 
 #[derive(Debug)]
 pub struct Downloader {
     deezer_client: DeezerClient,
-    progress_rx: Receiver<ProgressEvent>,
     download_tx: Sender<Track>,
 }
 
 impl Downloader {
-    pub fn new() -> Self {
+    pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
         let (download_tx, download_rx) = unbounded::<Track>();
-        let (progress_tx, progress_rx) = unbounded();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
@@ -47,13 +30,13 @@ impl Downloader {
                 let downloader = DeezerDownloader::new().await.unwrap();
                 while let Ok(track) = _download_rx.recv() {
                     _progress_tx
-                        .send(ProgressEvent::Start(track.clone()))
+                        .send(ProgressEvent::Start(track.clone().into()))
                         .unwrap();
 
                     let result = download_song_from_track(track.clone(), &downloader).await;
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(track),
-                        Err(_) => ProgressEvent::DownloadError(track),
+                        Ok(_) => ProgressEvent::Finish(track.into()),
+                        Err(_) => ProgressEvent::DownloadError(track.into()),
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -64,18 +47,20 @@ impl Downloader {
         Downloader {
             deezer_client: DeezerClient::new(),
             download_tx,
-            progress_rx,
         }
     }
 
-    pub fn get_progress_rx(&self) -> Receiver<ProgressEvent> {
-        self.progress_rx.clone()
-    }
+    pub async fn request_download(&self, track_id: DeezerId) -> Result<()> {
+        let track = self
+            .get_track(track_id)
+            .await
+            .ok_or(eyre!("Unable to find track with id {track_id}"))?;
 
-    pub fn request_download(&self, track: Track) {
         self.download_tx
             .send(track)
             .expect("Channel should be open");
+
+        Ok(())
     }
 
     pub async fn get_track(&self, id: u64) -> Option<Track> {
@@ -88,7 +73,7 @@ impl Downloader {
         }
     }
 
-    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<Track>> {
+    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<crate::models::music::Song>> {
         let maybe_album = self.deezer_client.album(id).await;
         if let Ok(Some(album)) = maybe_album {
             let futures: Vec<_> = album
@@ -101,6 +86,7 @@ impl Downloader {
                             .get_full()
                             .await
                             .expect("Track should always be available.")
+                            .into()
                     }
                 })
                 .collect();
@@ -145,15 +131,6 @@ fn write_song_to_file(song: Song) -> Result<()> {
     Ok(())
 }
 
-/// Replaces illegal characters for a Windows file.
-fn replace_illegal_characters(str: &str) -> String {
-    static ILLEGAL_CHARACTERS: [char; 9] = ['<', '>', ':', '"', '/', '\\', '|', '?', '*'];
-
-    str.chars()
-        .filter(|char| !ILLEGAL_CHARACTERS.contains(char))
-        .collect()
-}
-
 fn metadata_from_track(track: Track) -> SongMetadata {
     SongMetadata {
         id: track.id,
@@ -170,24 +147,5 @@ fn metadata_from_track(track: Track) -> SongMetadata {
             cover_big: track.album.cover_big,
         },
         release_date: Some(track.release_date),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn replaces_invalid_chars() {
-        let file_name = "AC/DC - Thunderstruck.mp3";
-
-        assert_eq!(
-            "ACDC - Thunderstruck.mp3",
-            replace_illegal_characters(file_name)
-        );
-
-        let file_name = "<>:\"/\\|?* - Test.mp3";
-
-        assert_eq!(" - Test.mp3", replace_illegal_characters(file_name));
     }
 }

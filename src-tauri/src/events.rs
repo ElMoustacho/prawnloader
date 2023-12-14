@@ -1,7 +1,7 @@
 use serde::Serialize;
 use ts_rs::TS;
 
-use crate::{downloader::ProgressEvent, models::music::Song};
+use crate::{downloaders::ProgressEvent, models::music::Song};
 
 #[derive(Clone, TS, Serialize, strum_macros::Display)]
 #[ts(export, export_to = "../src/models/")]
@@ -18,10 +18,10 @@ pub enum Event {
 impl From<ProgressEvent> for Event {
     fn from(event: ProgressEvent) -> Self {
         match event {
-            ProgressEvent::Waiting(track) => Self::Waiting(Song::from(track)),
-            ProgressEvent::Start(track) => Self::Start(Song::from(track)),
-            ProgressEvent::Finish(track) => Self::Finish(Song::from(track)),
-            ProgressEvent::DownloadError(track) => Self::DownloadError(Song::from(track)),
+            ProgressEvent::Waiting(song) => Self::Waiting(song),
+            ProgressEvent::Start(song) => Self::Start(song),
+            ProgressEvent::Finish(song) => Self::Finish(song),
+            ProgressEvent::DownloadError(song) => Self::DownloadError(song),
         }
     }
 }

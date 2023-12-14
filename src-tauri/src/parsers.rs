@@ -1,15 +1,10 @@
-// Disable these modules for now
-// mod deezer;
-// mod youtube;
-
 use std::{collections::HashMap, num::ParseIntError};
 
 use url::Url;
 
-use crate::downloader::DeezerId;
+use crate::downloaders::{DeezerId, YoutubeId, YoutubePlaylistId};
 
 type ParseResult = std::result::Result<ParsedId, Error>;
-type YoutubeId = String;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -32,7 +27,7 @@ pub enum ParsedId {
     DeezerAlbum(DeezerId),
     DeezerTrack(DeezerId),
     YoutubeVideo(YoutubeId),
-    YoutubePlaylist(YoutubeId),
+    YoutubePlaylist(YoutubePlaylistId),
 }
 
 pub async fn parse_id(url: &str) -> ParseResult {
@@ -73,15 +68,8 @@ async fn normalize_url(url: &str) -> std::result::Result<Url, url::ParseError> {
 fn parse_youtube(url: &Url) -> ParseResult {
     let query_pairs: HashMap<_, _> = url.query_pairs().collect();
 
-    let id =  match url.path() {
-        "/watch" if query_pairs.contains_key("v") => ParsedId::YoutubeVideo(query_pairs.get("v").unwrap().to_string()),
-        "/playlist" if query_pairs.contains_key("list") => ParsedId::YoutubePlaylist(query_pairs.get("list").unwrap().to_string()),
-        _ => {
-            return Err(Error::InvalidURL("URL must be in the format \"www.youtube.com/watch?v=abcdefg\" or \"www.youtube.com/playlist?list=abcdefg\"".to_string()))
-        }
-    };
-
-    Ok(id)
+    // TODO
+    todo!("Parse youtube")
 }
 
 fn parse_deezer(url: &Url) -> ParseResult {
@@ -147,13 +135,13 @@ mod tests {
             parse_id(YOUTUBE_VIDEO_URL)
                 .await
                 .expect("URL should be valid"),
-            ParsedId::YoutubeVideo("dQw4w9WgXcQ".to_string())
+            ParsedId::YoutubeVideo("dQw4w9WgXcQ".parse().unwrap())
         );
         assert_eq!(
             parse_id(YOUTUBE_PLAYLIST_URL)
                 .await
                 .expect("URL should be valid"),
-            ParsedId::YoutubePlaylist("PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".to_string())
+            ParsedId::YoutubePlaylist("PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".parse().unwrap())
         );
     }
 
@@ -179,7 +167,7 @@ mod tests {
     fn parses_youtube_video() {
         let url = Url::parse(YOUTUBE_VIDEO_URL).expect("URL should be valid");
         let parsed_id = parse_youtube(&url).expect("URL should be valid");
-        let expected_id = "dQw4w9WgXcQ".to_string();
+        let expected_id = "dQw4w9WgXcQ".parse().unwrap();
 
         assert_eq!(parsed_id, ParsedId::YoutubeVideo(expected_id));
     }
@@ -188,7 +176,7 @@ mod tests {
     fn parses_youtube_playlist() {
         let url = Url::parse(YOUTUBE_PLAYLIST_URL).expect("URL should be valid");
         let parsed_id = parse_youtube(&url).expect("URL should be valid");
-        let expected_id = "PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".to_string();
+        let expected_id = "PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".parse().unwrap();
 
         assert_eq!(parsed_id, ParsedId::YoutubePlaylist(expected_id));
     }
