@@ -46,7 +46,7 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
 async fn request_download(track_id: String, state: State<'_, AppState>) -> Result<(), String> {
     let track_id: DeezerId = track_id
         .parse()
-        .map_err(|_| "Id could not be converter to integer")?;
+        .map_err(|_| "Id could not be converted to integer")?;
 
     let track = state
         .downloader
