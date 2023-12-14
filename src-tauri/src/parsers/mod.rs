@@ -59,7 +59,7 @@ async fn normalize_url(url: &str) -> std::result::Result<Url, url::ParseError> {
 
     match url.domain() {
         Some("music.youtube.com") | Some("m.youtube.com") => {
-            url.set_host(Some("www.youtube.com"));
+            let _ = url.set_host(Some("www.youtube.com"));
         }
         Some("deezer.page.link") => {
             url = follow_redirects(url).await;
@@ -138,10 +138,22 @@ mod tests {
             ParsedId::DeezerTrack(498467242)
         );
         assert_eq!(
+            parse_id(DEEZER_PAGE_LINK_URL)
+                .await
+                .expect("URL should be valid"),
+            ParsedId::DeezerTrack(498467242)
+        );
+        assert_eq!(
             parse_id(YOUTUBE_VIDEO_URL)
                 .await
                 .expect("URL should be valid"),
             ParsedId::YoutubeVideo("dQw4w9WgXcQ".to_string())
+        );
+        assert_eq!(
+            parse_id(YOUTUBE_PLAYLIST_URL)
+                .await
+                .expect("URL should be valid"),
+            ParsedId::YoutubePlaylist("PLv3TTBr1W_9tppikBxAE_G6qjWdBljBHJ".to_string())
         );
     }
 
