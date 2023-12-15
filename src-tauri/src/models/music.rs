@@ -49,11 +49,19 @@ impl From<rusty_ytdl::VideoDetails> for Song {
             .author
             .map(|author| author.name)
             .unwrap_or_default();
+        let album = Album {
+            cover_url: video_details
+                .thumbnails
+                .first()
+                .map(|t| t.url.clone())
+                .unwrap_or_default(),
+            ..Default::default()
+        };
 
         Self {
             id: video_details.video_id,
             title: video_details.title,
-            album: Album::default(),
+            album,
             artist,
         }
     }
