@@ -7,7 +7,7 @@ use tauri::api::path::download_dir;
 
 use crate::models::music::Song;
 
-use super::{ProgressEvent, YoutubeId, YoutubePlaylistId};
+use super::{replace_illegal_characters, ProgressEvent, YoutubeId, YoutubePlaylistId};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
@@ -85,7 +85,8 @@ async fn download_song_from_video(
     let video_details = video.get_basic_info().await?.video_details;
 
     // TODO: Allow the target directory to be given.
-    let video_path = download_dir().unwrap().join(video_details.title);
+    let title = replace_illegal_characters(&video_details.title);
+    let video_path = download_dir().unwrap().join(title);
     video.download(video_path).await.unwrap();
 
     Ok(())
