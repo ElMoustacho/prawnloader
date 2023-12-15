@@ -22,7 +22,6 @@ tauri = { version = "1.2", features = [
 	"shell-open",
 ] }
 tokio = { version = "1.25.0", features = ["full"] }
-rustube = { version = "0.6.0", features = ["blocking"] }
 regex = "1.7.1"
 reqwest = "0.11.14"
 futures = { version = "0.3.26", features = ["thread-pool"] }

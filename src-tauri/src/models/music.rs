@@ -1,7 +1,6 @@
 use deezer::models::Track;
 use serde::Serialize;
 use ts_rs::TS;
-use ytextract::{playlist::Video as PlaylistVideo, Video};
 
 #[derive(TS, Debug, Serialize, Clone, Default)]
 #[ts(export, export_to = "../src/models/")]
@@ -33,24 +32,13 @@ impl From<Track> for Song {
     }
 }
 
-impl From<Video> for Song {
-    fn from(video: Video) -> Self {
+impl From<rusty_ytdl::search::Video> for Song {
+    fn from(video: rusty_ytdl::search::Video) -> Self {
         Self {
-            id: video.id().to_string(),
-            title: video.title().to_string(),
+            id: video.id,
+            title: video.title,
             album: Album::default(),
-            artist: video.channel().name().to_string(),
-        }
-    }
-}
-
-impl From<PlaylistVideo> for Song {
-    fn from(video: PlaylistVideo) -> Self {
-        Self {
-            id: video.id().to_string(),
-            title: video.title().to_string(),
-            album: Album::default(),
-            artist: video.channel().name().to_string(),
+            artist: video.channel.name,
         }
     }
 }

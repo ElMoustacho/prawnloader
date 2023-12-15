@@ -68,11 +68,11 @@ async fn normalize_url(url: &str) -> std::result::Result<Url, url::ParseError> {
 fn parse_youtube(url: &Url) -> ParseResult {
     let url = &url[..];
 
-    if let Ok(id) = ytextract::video::Id::from_str(url) {
+    if let Ok(id) = YoutubeId::from_str(url) {
         return Ok(ParsedId::YoutubeVideo(id));
     }
 
-    if let Ok(id) = ytextract::playlist::Id::from_str(url) {
+    if let Ok(id) = YoutubePlaylistId::from_str(url) {
         return Ok(ParsedId::YoutubePlaylist(id));
     }
 

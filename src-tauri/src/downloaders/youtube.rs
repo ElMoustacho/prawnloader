@@ -1,23 +1,23 @@
 use crossbeam_channel::{unbounded, Sender};
-use futures::StreamExt;
-use rusty_ytdl::{VideoOptions, VideoQuality, VideoSearchOptions};
+use rusty_ytdl::{
+    search::{Playlist, PlaylistSearchOptions},
+    VideoOptions, VideoQuality, VideoSearchOptions,
+};
 use tauri::api::path::download_dir;
-use ytextract::Client;
 
 use crate::models::music::Song;
 
-use super::ProgressEvent;
+use super::{ProgressEvent, YoutubeId, YoutubePlaylistId};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
 pub struct Downloader {
-    youtube_client: Client,
-    download_tx: Sender<ytextract::video::Video>,
+    download_tx: Sender<rusty_ytdl::search::Video>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<ytextract::video::Video>();
+        let (download_tx, download_rx) = unbounded::<rusty_ytdl::search::Video>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
@@ -40,50 +40,48 @@ impl Downloader {
             });
         }
 
-        Downloader {
-            youtube_client: Client::new(),
-            download_tx,
-        }
+        Downloader { download_tx }
     }
 
-    pub fn request_download(&self, track: ytextract::video::Video) {
+    pub fn request_download(&self, track: rusty_ytdl::search::Video) {
         self.download_tx
             .send(track)
             .expect("Channel should be open");
     }
 
-    pub async fn get_song(&self, id: ytextract::video::Id) -> Option<Song> {
+    pub async fn get_song(&self, id: YoutubeId) -> Option<Song> {
         let video = rusty_ytdl::Video::new(id.to_string()).ok()?;
         let video_details = video.get_basic_info().await.ok()?.video_details;
 
         Some(video_details.into())
     }
 
-    pub async fn get_playlist_songs(&self, id: ytextract::playlist::Id) -> Option<Vec<Song>> {
-        let playlist = self.youtube_client.playlist(id).await.ok()?;
+    pub async fn get_playlist_songs(&self, id: YoutubePlaylistId) -> Option<Vec<Song>> {
+        let options = PlaylistSearchOptions {
+            fetch_all: true,
+            ..Default::default()
+        };
+        let playlist = Playlist::get(id.to_string(), Some(&options)).await.ok()?;
         let songs = playlist
-            .videos()
-            .filter_map(|result| async { result.ok() })
+            .videos
+            .into_iter()
             .map(|video| video.into())
-            .collect()
-            .await;
+            .collect();
 
         Some(songs)
     }
 }
 
 async fn download_song_from_video(
-    video: &ytextract::video::Video,
+    video: &rusty_ytdl::search::Video,
 ) -> Result<(), rusty_ytdl::VideoError> {
-    let id = &video.id()[..];
-
     // TODO: Enable quality configuration
     let options = VideoOptions {
         quality: VideoQuality::Lowest,
         filter: VideoSearchOptions::Audio,
         ..Default::default()
     };
-    let video = rusty_ytdl::Video::new_with_options(id, options).unwrap();
+    let video = rusty_ytdl::Video::new_with_options(&video.id, options).unwrap();
     let video_details = video.get_basic_info().await?.video_details;
 
     // TODO: Allow the target directory to be given.
