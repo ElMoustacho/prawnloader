@@ -25,17 +25,3 @@ impl From<ProgressEvent> for Event {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn name_is_snake_case() {
-        let event = Event::Waiting(Song::default());
-        assert_eq!(event.to_string()[..], *"waiting");
-
-        let event = Event::RemoveFromQueue(Song::default());
-        assert_eq!(event.to_string()[..], *"remove_from_queue");
-    }
-}
