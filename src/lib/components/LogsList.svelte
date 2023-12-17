@@ -11,12 +11,6 @@
 		let isScrolledTop =
 			Math.abs(logsList.scrollTop) >= logsList.scrollHeight - logsList.clientHeight;
 
-		console.log(
-			isScrolledTop,
-			logsList.scrollTop,
-			logsList.scrollHeight,
-			logsList.clientHeight,
-		);
 		if (isScrolledTop) {
 			scrollTop();
 		}
