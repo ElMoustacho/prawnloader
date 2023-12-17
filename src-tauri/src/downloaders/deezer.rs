@@ -73,7 +73,7 @@ impl Downloader {
         }
     }
 
-    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<Song>> {
+    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<crate::models::music::Song>> {
         let maybe_album = self.deezer_client.album(id).await;
         if let Ok(Some(album)) = maybe_album {
             let futures: Vec<_> = album
