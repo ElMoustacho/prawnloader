@@ -32,7 +32,7 @@ type CommandReturn<C extends Command> = Commands[C][1];
 
 export interface Commands {
 	get_songs: [{ url: string }, Song[]];
-	request_download: [{ trackId: string }, void];
+	request_download: [{ song: Song }, void];
 }
 
 function _invoke<C extends Command>(cmd: C, args: CommandArgs<C>): Promise<CommandReturn<C>> {

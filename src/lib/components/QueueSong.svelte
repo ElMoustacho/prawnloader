@@ -31,7 +31,7 @@
 		<div class="buttons is-right">
 			<button
 				class="button"
-				on:click={() => invoke('request_download', { trackId: queueSong.song.id })}>
+				on:click={() => invoke('request_download', { song: queueSong.song })}>
 				<span class="icon is-small">
 					<i class="fas fa-download" />
 				</span>

@@ -7,9 +7,10 @@ use crossbeam_channel::unbounded;
 use prawnloader::{
     downloaders::{
         deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader, DeezerId,
+        YoutubeId,
     },
     events::Event,
-    models::music::Song,
+    models::music::{Song, SourceDownloader},
     parsers::{parse_id, ParsedId},
 };
 use tauri::{Manager, State};
@@ -55,16 +56,33 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
 }
 
 #[tauri::command]
-async fn request_download(track_id: String, state: State<'_, AppState>) -> Result<(), String> {
-    let track_id: DeezerId = track_id
-        .parse()
-        .map_err(|_| "Id could not be converted to integer")?;
+async fn request_download(song: Song, state: State<'_, AppState>) -> Result<(), String> {
+    match song.source {
+        SourceDownloader::Youtube => {
+            let youtube_id: YoutubeId = song
+                .id
+                .parse()
+                .map_err(|e| format!("{e} is not a valid YouTube id"))?;
 
-    state
-        .deezer_downloader
-        .request_download(track_id)
-        .await
-        .map_err(|err| err.to_string())
+            state
+                .youtube_downloader
+                .request_download(youtube_id)
+                .await
+                .map_err(|err| err.to_string())
+        }
+        SourceDownloader::Deezer => {
+            let deezer_id: DeezerId = song
+                .id
+                .parse()
+                .map_err(|_| "Id could not be converted to integer")?;
+
+            state
+                .deezer_downloader
+                .request_download(deezer_id)
+                .await
+                .map_err(|err| err.to_string())
+        }
+    }
 }
 
 #[tokio::main]

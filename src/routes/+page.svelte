@@ -40,7 +40,7 @@
 			if (queueItem.download_state === 'Downloading') return;
 
 			invoke('request_download', {
-				trackId: queueItem.song.id,
+				song: queueItem.song,
 			});
 		});
 	}

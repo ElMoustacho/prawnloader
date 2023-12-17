@@ -11,7 +11,7 @@ pub struct Album {
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "lowercase")]
-enum Downloader {
+pub enum SourceDownloader {
     Youtube,
     Deezer,
 }
@@ -20,7 +20,7 @@ enum Downloader {
 #[ts(export, export_to = "../src/models/")]
 pub struct Song {
     #[ts(inline)]
-    source: Downloader,
+    pub source: SourceDownloader,
     pub id: String,
     pub title: String,
     pub album: Album,
@@ -30,7 +30,7 @@ pub struct Song {
 impl From<Track> for Song {
     fn from(track: Track) -> Self {
         Self {
-            source: Downloader::Deezer,
+            source: SourceDownloader::Deezer,
             id: track.id.to_string(),
             title: track.title,
             artist: track.artist.name,
@@ -45,7 +45,7 @@ impl From<Track> for Song {
 impl From<rusty_ytdl::search::Video> for Song {
     fn from(video: rusty_ytdl::search::Video) -> Self {
         Self {
-            source: Downloader::Youtube,
+            source: SourceDownloader::Youtube,
             id: video.id,
             title: video.title,
             album: Album {
@@ -73,7 +73,7 @@ impl From<rusty_ytdl::VideoDetails> for Song {
         };
 
         Self {
-            source: Downloader::Youtube,
+            source: SourceDownloader::Youtube,
             id: video_details.video_id,
             title: video_details.title,
             album,
