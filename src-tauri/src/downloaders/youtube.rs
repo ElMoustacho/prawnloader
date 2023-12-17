@@ -87,7 +87,7 @@ async fn download_song(video_details: &VideoDetails) -> Result<(), rusty_ytdl::V
     let video = Video::new(video_details.video_id.clone())?;
 
     // TODO: Allow the target directory to be given.
-    let title = replace_illegal_characters(&video_details.title);
+    let title = replace_illegal_characters(&video_details.title) + ".webm";
     let video_path = download_dir().unwrap().join(title);
     video.download(video_path).await.unwrap();
 
