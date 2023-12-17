@@ -4,6 +4,8 @@
 	import type { QueueSong } from '../music';
 
 	export let queueSong: QueueSong;
+
+	$: downloading = queueSong.download_state === 'Downloading';
 </script>
 
 <div class="list-item p-2">
@@ -31,7 +33,8 @@
 		<div class="buttons is-right">
 			<button
 				class="button"
-				on:click={() => invoke('request_download', { song: queueSong.song })}>
+				on:click={() => invoke('request_download', { song: queueSong.song })}
+				disabled={downloading}>
 				<span class="icon is-small">
 					<i class="fas fa-download" />
 				</span>
@@ -39,7 +42,8 @@
 			<button
 				class="button is-danger"
 				on:click={() =>
-					queue.update(queue => queue.filter(x => x.song.id !== queueSong.song.id))}>
+					queue.update(queue => queue.filter(x => x.song.id !== queueSong.song.id))}
+				disabled={downloading}>
 				<span class="icon is-small">
 					<i class="fas fa-trash" />
 				</span>
