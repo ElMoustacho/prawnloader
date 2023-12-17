@@ -7,7 +7,6 @@ use crossbeam_channel::unbounded;
 use prawnloader::{
     downloaders::{
         deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader, DeezerId,
-        YoutubeId,
     },
     events::Event,
     models::music::{Song, SourceDownloader},
@@ -58,18 +57,11 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
 #[tauri::command]
 async fn request_download(song: Song, state: State<'_, AppState>) -> Result<(), String> {
     match song.source {
-        SourceDownloader::Youtube => {
-            let youtube_id: YoutubeId = song
-                .id
-                .parse()
-                .map_err(|e| format!("{e} is not a valid YouTube id"))?;
-
-            state
-                .youtube_downloader
-                .request_download(youtube_id)
-                .await
-                .map_err(|err| err.to_string())
-        }
+        SourceDownloader::Youtube => state
+            .youtube_downloader
+            .request_download(song)
+            .await
+            .map_err(|err| err.to_string()),
         SourceDownloader::Deezer => {
             let deezer_id: DeezerId = song
                 .id

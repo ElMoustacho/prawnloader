@@ -1,7 +1,7 @@
 use crossbeam_channel::{unbounded, Sender};
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
-    Video, VideoDetails, VideoError, VideoOptions, VideoQuality, VideoSearchOptions,
+    Video, VideoError,
 };
 use tauri::api::path::download_dir;
 
@@ -12,27 +12,27 @@ use super::{replace_illegal_characters, ProgressEvent, YoutubeId, YoutubePlaylis
 static DOWNLOAD_THREADS: u64 = 4;
 
 pub struct Downloader {
-    download_tx: Sender<VideoDetails>,
+    download_tx: Sender<Song>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<VideoDetails>();
+        let (download_tx, download_rx) = unbounded::<Song>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
             let _progress_tx = progress_tx.clone();
 
             tokio::spawn(async move {
-                while let Ok(video) = _download_rx.recv() {
+                while let Ok(song) = _download_rx.recv() {
                     _progress_tx
-                        .send(ProgressEvent::Start(video.clone().into()))
+                        .send(ProgressEvent::Start(song.clone().into()))
                         .unwrap();
 
-                    let result = download_song(&video).await;
+                    let result = download_song(&song).await;
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(video.into()),
-                        Err(_) => ProgressEvent::DownloadError(video.into()),
+                        Ok(_) => ProgressEvent::Finish(song.into()),
+                        Err(_) => ProgressEvent::DownloadError(song.into()),
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -43,19 +43,8 @@ impl Downloader {
         Downloader { download_tx }
     }
 
-    pub async fn request_download(&self, track_id: YoutubeId) -> Result<(), VideoError> {
-        // TODO: Enable quality configuration
-        let options = VideoOptions {
-            quality: VideoQuality::Lowest,
-            filter: VideoSearchOptions::Audio,
-            ..Default::default()
-        };
-        let video = Video::new_with_options(&track_id[..], options).unwrap();
-        let video_details = video.get_basic_info().await?.video_details;
-
-        self.download_tx
-            .send(video_details)
-            .expect("Channel should be open");
+    pub async fn request_download(&self, song: Song) -> Result<(), VideoError> {
+        self.download_tx.send(song).expect("Channel should be open");
 
         Ok(())
     }
@@ -83,11 +72,11 @@ impl Downloader {
     }
 }
 
-async fn download_song(video_details: &VideoDetails) -> Result<(), rusty_ytdl::VideoError> {
-    let video = Video::new(video_details.video_id.clone())?;
+async fn download_song(song: &Song) -> Result<(), rusty_ytdl::VideoError> {
+    let video = Video::new(song.id.clone())?;
 
     // TODO: Allow the target directory to be given.
-    let title = replace_illegal_characters(&video_details.title) + ".webm";
+    let title = replace_illegal_characters(&song.title) + ".webm";
     let video_path = download_dir().unwrap().join(title);
     video.download(video_path).await.unwrap();
 
