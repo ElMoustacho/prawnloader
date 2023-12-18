@@ -44,13 +44,18 @@ impl From<Track> for Song {
 
 impl From<rusty_ytdl::search::Video> for Song {
     fn from(video: rusty_ytdl::search::Video) -> Self {
+        let thumbnail = video
+            .thumbnails
+            .first()
+            .map_or_else(String::default, |t| t.url.clone());
+
         Self {
             source: SourceDownloader::Youtube,
             id: video.id,
             title: video.title,
             album: Album {
                 title: String::new(),
-                cover_url: String::new(),
+                cover_url: thumbnail,
             },
             artist: video.channel.name,
         }
