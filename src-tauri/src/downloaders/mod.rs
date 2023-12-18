@@ -6,8 +6,8 @@ pub mod deezer;
 pub mod youtube;
 
 pub type DeezerId = u64;
-pub type YoutubePlaylistId = ytextract::playlist::Id;
-pub type YoutubeId = ytextract::video::Id;
+pub type YoutubePlaylistId = String;
+pub type YoutubeId = String;
 
 #[derive(Debug, Clone, Serialize, strum_macros::Display)]
 pub enum ProgressEvent {

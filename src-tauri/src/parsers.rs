@@ -1,5 +1,6 @@
-use std::{num::ParseIntError, str::FromStr};
+use std::{collections::HashMap, num::ParseIntError};
 
+use rusty_ytdl::{get_video_id, search::Playlist};
 use url::Url;
 
 use crate::downloaders::{DeezerId, YoutubeId, YoutubePlaylistId};
@@ -66,13 +67,16 @@ async fn normalize_url(url: &str) -> std::result::Result<Url, url::ParseError> {
 }
 
 fn parse_youtube(url: &Url) -> ParseResult {
-    let url = &url[..];
+    let url_str = url.to_string();
 
-    if let Ok(id) = YoutubeId::from_str(url) {
+    if let Some(id) = get_video_id(&url_str) {
         return Ok(ParsedId::YoutubeVideo(id));
     }
 
-    if let Ok(id) = YoutubePlaylistId::from_str(url) {
+    if Playlist::is_playlist(url_str) {
+        let queries: HashMap<_, _> = url.query_pairs().into_owned().collect();
+        let id = queries["list"].clone();
+
         return Ok(ParsedId::YoutubePlaylist(id));
     }
 
