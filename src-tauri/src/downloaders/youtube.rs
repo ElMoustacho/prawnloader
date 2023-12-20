@@ -26,13 +26,13 @@ impl Downloader {
             tokio::spawn(async move {
                 while let Ok(song) = _download_rx.recv() {
                     _progress_tx
-                        .send(ProgressEvent::Start(song.clone().into()))
+                        .send(ProgressEvent::Start(song.clone()))
                         .unwrap();
 
                     let result = download_song(&song).await;
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(song.into()),
-                        Err(_) => ProgressEvent::DownloadError(song.into()),
+                        Ok(_) => ProgressEvent::Finish(song),
+                        Err(_) => ProgressEvent::DownloadError(song),
                     };
 
                     _progress_tx.send(progress).unwrap();
