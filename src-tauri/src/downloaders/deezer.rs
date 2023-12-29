@@ -3,24 +3,26 @@ use crossbeam_channel::{unbounded, Sender};
 use deezer::{models::Track, DeezerClient};
 use deezer_downloader::{
     song::{Album, Artist},
-    Downloader as DeezerDownloader, Song, SongMetadata,
+    Downloader as DeezerDownloader, SongMetadata,
 };
 use futures::future::join_all;
 use tauri::api::path::download_dir;
 
-use super::{replace_illegal_characters, DeezerId, ProgressEvent};
+use crate::models::music::Song;
+
+use super::{replace_illegal_characters, ProgressEvent};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
 #[derive(Debug)]
 pub struct Downloader {
     deezer_client: DeezerClient,
-    download_tx: Sender<Track>,
+    download_tx: Sender<Song>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<Track>();
+        let (download_tx, download_rx) = unbounded::<Song>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
@@ -28,15 +30,15 @@ impl Downloader {
 
             tokio::spawn(async move {
                 let downloader = DeezerDownloader::new().await.unwrap();
-                while let Ok(track) = _download_rx.recv() {
+                while let Ok(song) = _download_rx.recv() {
                     _progress_tx
-                        .send(ProgressEvent::Start(track.clone().into()))
+                        .send(ProgressEvent::Start(song.clone()))
                         .unwrap();
 
-                    let result = download_song_from_track(track.clone(), &downloader).await;
+                    let result = download_song(song.clone(), &downloader).await;
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(track.into()),
-                        Err(_) => ProgressEvent::DownloadError(track.into()),
+                        Ok(_) => ProgressEvent::Finish(song),
+                        Err(_) => ProgressEvent::DownloadError(song),
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -50,15 +52,8 @@ impl Downloader {
         }
     }
 
-    pub async fn request_download(&self, track_id: DeezerId) -> Result<()> {
-        let track = self
-            .get_track(track_id)
-            .await
-            .ok_or(eyre!("Unable to find track with id {track_id}"))?;
-
-        self.download_tx
-            .send(track)
-            .expect("Channel should be open");
+    pub async fn request_download(&self, song: Song) -> Result<()> {
+        self.download_tx.send(song).expect("Channel should be open");
 
         Ok(())
     }
@@ -73,7 +68,7 @@ impl Downloader {
         }
     }
 
-    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<crate::models::music::Song>> {
+    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<Song>> {
         let maybe_album = self.deezer_client.album(id).await;
         if let Ok(Some(album)) = maybe_album {
             let futures: Vec<_> = album
@@ -98,14 +93,15 @@ impl Downloader {
     }
 }
 
-async fn download_song_from_track(track: Track, downloader: &DeezerDownloader) -> Result<()> {
-    let id = track.id;
-    let song = match Song::download_from_metadata(metadata_from_track(track), downloader).await {
+async fn download_song(song: Song, downloader: &DeezerDownloader) -> Result<()> {
+    let maybe_song =
+        deezer_downloader::Song::download_from_metadata(metadata_from_song(song), downloader).await;
+    let song = match maybe_song {
         Ok(it) => it,
-        Err(_) => return Err(eyre!(format!("Song with id {} not found.", id))),
+        Err(_) => return Err(eyre!("Song not found.")),
     };
 
-    write_song_to_file(song)?;
+    write_song_to_file(&song)?;
 
     Ok(())
 }
@@ -113,7 +109,7 @@ async fn download_song_from_track(track: Track, downloader: &DeezerDownloader) -
 /// Write a [Song] to the download directory.
 ///
 /// TODO: Allow the target directory to be given.
-fn write_song_to_file(song: Song) -> Result<()> {
+fn write_song_to_file(song: &deezer_downloader::Song) -> Result<()> {
     let Some(download_dir) = download_dir() else {
         return Ok(());
     };
@@ -131,21 +127,24 @@ fn write_song_to_file(song: Song) -> Result<()> {
     Ok(())
 }
 
-fn metadata_from_track(track: Track) -> SongMetadata {
+fn metadata_from_song(song: Song) -> SongMetadata {
     SongMetadata {
-        id: track.id,
-        title: track.title,
+        id: song.id.parse().unwrap_or_default(),
+        title: song.title,
         artist: Artist {
-            id: track.artist.id,
-            name: track.artist.name,
+            // Id is not used in the metadata
+            id: Default::default(),
+            name: song.artist,
         },
         album: Album {
-            id: track.album.id,
-            title: track.album.title,
-            cover_small: track.album.cover_small,
-            cover_medium: track.album.cover_medium,
-            cover_big: track.album.cover_big,
+            // Id is not used in the metadata
+            id: Default::default(),
+            title: song.album.title,
+            // Only cover_big is used in the metadata
+            cover_big: song.album.cover_url,
+            cover_medium: Default::default(),
+            cover_small: Default::default(),
         },
-        release_date: Some(track.release_date),
+        release_date: Some(song.release_date),
     }
 }

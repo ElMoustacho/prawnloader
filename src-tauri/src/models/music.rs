@@ -25,6 +25,7 @@ pub struct Song {
     pub title: String,
     pub album: Album,
     pub artist: String,
+    pub release_date: String,
 }
 
 impl From<Track> for Song {
@@ -38,6 +39,7 @@ impl From<Track> for Song {
                 title: track.album.title,
                 cover_url: track.album.cover,
             },
+            release_date: track.release_date,
         }
     }
 }
@@ -58,6 +60,7 @@ impl From<rusty_ytdl::search::Video> for Song {
                 cover_url: thumbnail,
             },
             artist: video.channel.name,
+            release_date: video.uploaded_at.unwrap_or_default(),
         }
     }
 }
@@ -83,6 +86,7 @@ impl From<rusty_ytdl::VideoDetails> for Song {
             title: video_details.title,
             album,
             artist,
+            release_date: video_details.upload_date,
         }
     }
 }

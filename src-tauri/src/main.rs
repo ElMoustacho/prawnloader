@@ -6,7 +6,7 @@
 use crossbeam_channel::unbounded;
 use prawnloader::{
     downloaders::{
-        deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader, DeezerId,
+        deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader,
     },
     events::Event,
     models::music::{Song, SourceDownloader},
@@ -62,18 +62,11 @@ async fn request_download(song: Song, state: State<'_, AppState>) -> Result<(), 
             .request_download(song)
             .await
             .map_err(|err| err.to_string()),
-        SourceDownloader::Deezer => {
-            let deezer_id: DeezerId = song
-                .id
-                .parse()
-                .map_err(|_| "Id could not be converted to integer")?;
-
-            state
-                .deezer_downloader
-                .request_download(deezer_id)
-                .await
-                .map_err(|err| err.to_string())
-        }
+        SourceDownloader::Deezer => state
+            .deezer_downloader
+            .request_download(song)
+            .await
+            .map_err(|err| err.to_string()),
     }
 }
 
