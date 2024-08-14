@@ -97,7 +97,9 @@ async fn main() {
                         Event::Waiting(track) => handle.emit_all(event_name, track).unwrap(),
                         Event::Start(track) => handle.emit_all(event_name, track).unwrap(),
                         Event::Finish(track) => handle.emit_all(event_name, track).unwrap(),
-                        Event::DownloadError(track) => handle.emit_all(event_name, track).unwrap(),
+                        Event::DownloadError(track, err_msg) => {
+                            handle.emit_all(event_name, (track, err_msg)).unwrap()
+                        }
                         Event::RemoveFromQueue(track) => {
                             handle.emit_all(event_name, track).unwrap()
                         }

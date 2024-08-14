@@ -14,7 +14,7 @@ pub enum ProgressEvent {
     Waiting(Song),
     Start(Song),
     Finish(Song),
-    DownloadError(Song),
+    DownloadError(Song, String),
 }
 
 #[derive(Debug, strum_macros::Display)]

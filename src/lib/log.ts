@@ -38,6 +38,6 @@ export function formatLogSongNotFound(songId: number): Log {
 	return new Log(false, `Song ${songId} not found`);
 }
 
-export function formatLogDownloadError(song: Song): Log {
-	return new Log(false, `Error while downloading ${song.artist} - ${song.title}`);
+export function formatLogDownloadError(song: Song, message: string): Log {
+	return new Log(false, `Error while downloading ${song.artist} - ${song.title} (${message}).`);
 }

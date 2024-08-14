@@ -39,7 +39,7 @@
 
 		// Error related event listeners
 		listen('download_error', e => {
-			addLog(formatLogDownloadError(e.payload));
+			addLog(formatLogDownloadError(...e.payload));
 		});
 	});
 </script>

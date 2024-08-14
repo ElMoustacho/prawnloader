@@ -11,7 +11,7 @@ pub enum Event {
     Waiting(Song),
     Start(Song),
     Finish(Song),
-    DownloadError(Song),
+    DownloadError(Song, String),
     RemoveFromQueue(Song),
 }
 
@@ -21,7 +21,7 @@ impl From<ProgressEvent> for Event {
             ProgressEvent::Waiting(song) => Self::Waiting(song),
             ProgressEvent::Start(song) => Self::Start(song),
             ProgressEvent::Finish(song) => Self::Finish(song),
-            ProgressEvent::DownloadError(song) => Self::DownloadError(song),
+            ProgressEvent::DownloadError(song, err_msg) => Self::DownloadError(song, err_msg),
         }
     }
 }

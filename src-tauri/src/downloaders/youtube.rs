@@ -32,7 +32,7 @@ impl Downloader {
                     let result = download_song(&song).await;
                     let progress = match result {
                         Ok(_) => ProgressEvent::Finish(song),
-                        Err(_) => ProgressEvent::DownloadError(song),
+                        Err(err) => ProgressEvent::DownloadError(song, err.to_string()),
                     };
 
                     _progress_tx.send(progress).unwrap();

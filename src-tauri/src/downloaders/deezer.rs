@@ -38,7 +38,8 @@ impl Downloader {
                     let result = download_song(song.clone(), &downloader).await;
                     let progress = match result {
                         Ok(_) => ProgressEvent::Finish(song),
-                        Err(_) => ProgressEvent::DownloadError(song),
+                        // FIXME: Add download error String
+                        Err(_) => ProgressEvent::DownloadError(song, String::new()),
                     };
 
                     _progress_tx.send(progress).unwrap();
