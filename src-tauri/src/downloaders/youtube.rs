@@ -1,7 +1,7 @@
 use crossbeam_channel::{unbounded, Sender};
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
-    Video, VideoError,
+    FFmpegArgs, Video, VideoError,
 };
 use tauri::api::path::download_dir;
 
@@ -72,13 +72,24 @@ impl Downloader {
     }
 }
 
-async fn download_song(song: &Song) -> Result<(), rusty_ytdl::VideoError> {
+async fn download_song(song: &Song) -> Result<(), VideoError> {
+    // TODO: Allow to choose file format
+    let file_format: String = String::from("mp3");
     let video = Video::new(song.id.clone())?;
 
     // TODO: Allow the target directory to be given.
-    let title = replace_illegal_characters(&song.title) + ".webm";
+    let title = format!(
+        "{}.{}",
+        replace_illegal_characters(&song.title),
+        file_format
+    );
     let video_path = download_dir().unwrap().join(title);
-    video.download(video_path).await.unwrap();
+    let args = FFmpegArgs {
+        format: Some(file_format),
+        audio_filter: None,
+        video_filter: None,
+    };
+    video.download_with_ffmpeg(video_path, Some(args)).await?;
 
     Ok(())
 }
