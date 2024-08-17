@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
-#[ts(export, export_to = "../src/models/")]
+#[ts(export)]
 pub struct Album {
     pub title: String,
     pub cover_url: String,
@@ -17,7 +17,7 @@ pub enum SourceDownloader {
 }
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
-#[ts(export, export_to = "../src/models/")]
+#[ts(export)]
 pub struct Song {
     #[ts(inline)]
     pub source: SourceDownloader,

@@ -16,7 +16,11 @@ tauri-build = { version = "1.2", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.2", features = ["dialog-confirm", "dialog-message", "shell-open"] }
+tauri = { version = "1.2", features = [
+	"dialog-confirm",
+	"dialog-message",
+	"shell-open",
+] }
 tokio = { version = "1.25.0", features = ["full"] }
 regex = "1.7.1"
 reqwest = "0.12.5"
@@ -29,7 +33,7 @@ deezer_downloader = { git = "https://github.com/zggff/deezer_downloader", rev = 
 url = "2.5.0"
 strum_macros = "0.26.4"
 thiserror = "1.0.50"
-ts-rs = "7.0.0"
+ts-rs = "9.0.1"
 rusty_ytdl = { version = "0.7.4", features = ["ffmpeg"] }
 
 

@@ -4,7 +4,7 @@ use ts_rs::TS;
 use crate::{downloaders::ProgressEvent, models::music::Song};
 
 #[derive(Clone, TS, Serialize, strum_macros::Display)]
-#[ts(export, export_to = "../src/models/")]
+#[ts(export)]
 #[serde(rename_all = "snake_case", tag = "type", content = "payload")]
 #[strum(serialize_all = "snake_case")]
 pub enum Event {
