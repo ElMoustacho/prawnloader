@@ -7,6 +7,7 @@ import {
 import type { Event } from '$models/Event';
 import { invoke } from '@tauri-apps/api';
 import type { Song } from '$models/Song';
+import type { Config } from '$models/Config';
 
 type EventMap = {
 	[K in Event['type']]: Extract<Event, { type: K }>['payload'];
@@ -33,6 +34,7 @@ type CommandReturn<C extends Command> = Commands[C][1];
 export interface Commands {
 	get_songs: [{ url: string }, Song[]];
 	request_download: [{ song: Song }, void];
+	get_config: [NoParams, Config];
 }
 
 function _invoke<C extends Command>(cmd: C, args: CommandArgs<C>): Promise<CommandReturn<C>> {

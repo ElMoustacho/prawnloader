@@ -5,6 +5,7 @@
 
 use crossbeam_channel::unbounded;
 use prawnloader::{
+    config::Config,
     downloaders::{
         deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader,
     },
@@ -17,6 +18,7 @@ use tauri::{Manager, State};
 struct AppState {
     deezer_downloader: DeezerDownloader,
     youtube_downloader: YoutubeDownloader,
+    config: Config,
 }
 
 #[tauri::command]
@@ -70,6 +72,11 @@ async fn request_download(song: Song, state: State<'_, AppState>) -> Result<(), 
     }
 }
 
+#[tauri::command]
+fn get_config(state: State<'_, AppState>) -> Result<Config, ()> {
+    return Ok(state.config.clone());
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -110,11 +117,16 @@ async fn main() {
             app.manage(AppState {
                 deezer_downloader,
                 youtube_downloader,
+                config: Config::default(),
             });
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_songs, request_download])
+        .invoke_handler(tauri::generate_handler![
+            get_songs,
+            request_download,
+            get_config
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
