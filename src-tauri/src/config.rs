@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
-use strum_macros::EnumIter;
 use ts_rs::TS;
 
-#[derive(TS, Debug, Serialize, Deserialize, Clone, Default, EnumIter)]
+#[derive(TS, Debug, Serialize, Deserialize, Clone, Default)]
 pub enum YoutubeFormat {
     #[default]
     MP3,
