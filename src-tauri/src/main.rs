@@ -3,6 +3,8 @@
     windows_subsystem = "windows"
 )]
 
+use std::sync::Mutex;
+
 use crossbeam_channel::unbounded;
 use prawnloader::{
     config::Config,
@@ -15,14 +17,17 @@ use prawnloader::{
 };
 use tauri::{Manager, State};
 
-struct AppState {
+struct DownloadersState {
     deezer_downloader: DeezerDownloader,
     youtube_downloader: YoutubeDownloader,
+}
+
+struct ConfigState {
     config: Config,
 }
 
 #[tauri::command]
-async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>, String> {
+async fn get_songs(url: String, state: State<'_, DownloadersState>) -> Result<Vec<Song>, String> {
     let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
@@ -57,7 +62,7 @@ async fn get_songs(url: String, state: State<'_, AppState>) -> Result<Vec<Song>,
 }
 
 #[tauri::command]
-async fn request_download(song: Song, state: State<'_, AppState>) -> Result<(), String> {
+async fn request_download(song: Song, state: State<'_, DownloadersState>) -> Result<(), String> {
     match song.source {
         SourceDownloader::Youtube => state
             .youtube_downloader
@@ -73,8 +78,17 @@ async fn request_download(song: Song, state: State<'_, AppState>) -> Result<(), 
 }
 
 #[tauri::command]
-fn get_config(state: State<'_, AppState>) -> Result<Config, ()> {
-    return Ok(state.config.clone());
+fn get_config(state: State<'_, Mutex<ConfigState>>) -> Result<Config, ()> {
+    println!("getting config");
+    Ok(state.lock().unwrap().config.clone())
+}
+
+#[tauri::command]
+fn update_config(config: Config, state: State<'_, Mutex<ConfigState>>) -> Result<Config, String> {
+    state.lock().as_mut().unwrap().config = config;
+
+    // Return the modified config in case we need to do additional checks later
+    Ok(state.lock().unwrap().config.to_owned())
 }
 
 #[tokio::main]
@@ -114,18 +128,22 @@ async fn main() {
                 }
             });
 
-            app.manage(AppState {
+            app.manage(DownloadersState {
                 deezer_downloader,
                 youtube_downloader,
-                config: Config::default(),
             });
+
+            app.manage(Mutex::new(ConfigState {
+                config: Config::default(),
+            }));
 
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             get_songs,
             request_download,
-            get_config
+            get_config,
+            update_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

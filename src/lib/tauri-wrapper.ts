@@ -35,6 +35,7 @@ export interface Commands {
 	get_songs: [{ url: string }, Song[]];
 	request_download: [{ song: Song }, void];
 	get_config: [NoParams, Config];
+	update_config: [{ config: Config }, Config];
 }
 
 function _invoke<C extends Command>(cmd: C, args: CommandArgs<C>): Promise<CommandReturn<C>> {
