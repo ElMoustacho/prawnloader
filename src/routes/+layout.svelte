@@ -4,6 +4,7 @@
 	import { queue } from '$lib/stores';
 	import { onMount } from 'svelte';
 
+	import { page } from '$app/stores';
 	import '../scss/app.scss';
 
 	const links = [
@@ -44,16 +45,19 @@
 	});
 </script>
 
-<div class="tabs has-background-white">
-	<ul>
-		{#each links as link}
-			<!-- TODO: Add "is-active" when on a page under this link -->
-			<a class="navbar-item" data-sveltekit-preload-data href={link[0]}>
-				{link[1]}
-			</a>
-		{/each}
-	</ul>
-</div>
+<div class="is-flex is-flex-direction-column">
+	<div class="tabs">
+		<ul>
+			{#each links as link}
+				<!-- TODO: Add "is-active" when on a page under this link -->
+				<li class:is-active={$page.route.id === link[0]}>
+					<a data-sveltekit-preload-data href={link[0]}>
+						{link[1]}
+					</a>
+				</li>
+			{/each}
+		</ul>
+	</div>
 
 <div class="container is-fluid is-flex is-flex-direction-column">
 	<slot />
