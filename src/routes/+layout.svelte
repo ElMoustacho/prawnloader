@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/log';
-	import { listen } from '$lib/tauri-wrapper';
 	import { queue } from '$lib/stores';
+	import { listen } from '$lib/tauri-wrapper';
 	import { onMount } from 'svelte';
 
 	import { page } from '$app/stores';
@@ -45,8 +45,8 @@
 	});
 </script>
 
-<div class="is-flex is-flex-direction-column">
-	<div class="tabs">
+<div class="is-flex is-flex-direction-column is-maxheight">
+	<div class="tabs m-0">
 		<ul>
 			{#each links as link}
 				<!-- TODO: Add "is-active" when on a page under this link -->
@@ -59,22 +59,13 @@
 		</ul>
 	</div>
 
-<div class="container is-fluid is-flex is-flex-direction-column">
-	<slot />
+	<div class="container py-4 is-maxheight is-fluid is-flex is-flex-direction-column">
+		<slot />
+	</div>
 </div>
 
 <style lang="scss">
-	.tabs {
-		position: sticky;
-		top: 0;
-		z-index: 10;
-	}
-
-	.container {
-		// 🍝 Allows to enfore height rules in flexboxes,
-		// but doesn't affect it because it is in a flexbox
-		height: 0;
-		width: 100%;
-		overflow: visible;
+	.container.is-maxheight.is-fluid.is-flex.is-flex-direction-column {
+		overflow-y: auto;
 	}
 </style>
