@@ -79,7 +79,6 @@ async fn request_download(song: Song, state: State<'_, DownloadersState>) -> Res
 
 #[tauri::command]
 fn get_config(state: State<'_, Mutex<ConfigState>>) -> Result<Config, ()> {
-    println!("getting config");
     Ok(state.lock().unwrap().config.clone())
 }
 
