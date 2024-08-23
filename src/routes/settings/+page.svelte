@@ -30,16 +30,17 @@
 		});
 	});
 
-	function escapeListener(event: KeyboardEvent) {
+	function keydownListener(event: KeyboardEvent) {
 		if (event.key === 'Escape') cancelChanges();
+		else if (event.key === 'Enter' && event.ctrlKey) validateChanges();
 	}
 
 	onMount(() => {
-		document.addEventListener('keydown', escapeListener);
+		document.addEventListener('keydown', keydownListener);
 	});
 
 	onDestroy(() => {
-		document.removeEventListener('keydown', escapeListener);
+		document.removeEventListener('keydown', keydownListener);
 	});
 
 	function validateChanges() {
@@ -156,10 +157,18 @@
 
 	<section class="box settings-buttons">
 		<div class="buttons">
-			<button class="button is-primary" disabled={!unsavedChanges} on:click={validateChanges}>
+			<button
+				title="<Ctrl+Enter> to validate changes."
+				class="button is-primary"
+				disabled={!unsavedChanges}
+				on:click={validateChanges}>
 				Confirm changes
 			</button>
-			<button class="button is-danger" disabled={!unsavedChanges} on:click={cancelChanges}>
+			<button
+				title="<Esc> to cancel changes."
+				class="button is-danger"
+				disabled={!unsavedChanges}
+				on:click={cancelChanges}>
 				Cancel changes
 			</button>
 		</div>

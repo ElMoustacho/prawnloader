@@ -5,12 +5,13 @@
 </script>
 
 <script lang="ts">
+	import LogsList from '$lib/components/LogsList.svelte';
+	import QueueSong from '$lib/components/QueueSong.svelte';
+	import { Log, addLog, clearLogs, logs } from '$lib/log';
+	import { queue } from '$lib/stores';
 	import { invoke } from '$lib/tauri-wrapper';
 	import { confirm } from '@tauri-apps/api/dialog';
-	import { queue } from '$lib/stores';
-	import { addLog, logs, Log, clearLogs } from '$lib/log';
-	import QueueSong from '$lib/components/QueueSong.svelte';
-	import LogsList from '$lib/components/LogsList.svelte';
+	import { onDestroy, onMount } from 'svelte';
 
 	function addToQueue() {
 		if ($urls.length <= 0) return;
@@ -50,6 +51,18 @@
 			$queue = [];
 		}
 	}
+
+	function ctrlEnterListener(event: KeyboardEvent) {
+		if (event.key === 'Enter' && event.ctrlKey) addToQueue();
+	}
+
+	onMount(() => {
+		document.addEventListener('keydown', ctrlEnterListener);
+	});
+
+	onDestroy(() => {
+		document.removeEventListener('keydown', ctrlEnterListener);
+	});
 </script>
 
 <div class="columns is-mobile is-maxheight">
@@ -63,7 +76,7 @@
 			<span class="icon">
 				<i class="fas fa-plus" />
 			</span>
-			<span>Add to queue</span>
+			<span title="<Ctrl+Enter> To add to queue.">Add to queue</span>
 		</button>
 
 		<fieldset class="box is-flex-grow-1">

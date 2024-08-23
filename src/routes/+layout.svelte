@@ -4,6 +4,7 @@
 	import { listen } from '$lib/tauri-wrapper';
 	import { onMount } from 'svelte';
 
+	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import '../scss/app.scss';
 
@@ -42,7 +43,24 @@
 		listen('download_error', e => {
 			addLog(formatLogDownloadError(...e.payload));
 		});
+
+		document.addEventListener('keydown', ctrlTabListener);
 	});
+
+	function ctrlTabListener(event: KeyboardEvent) {
+		if (event.key === 'Tab' && event.ctrlKey) {
+			if ($page.route.id === null) return;
+
+			const currentTabIndex = Object.keys(Object.fromEntries(links)).indexOf($page.route.id);
+
+			if (currentTabIndex === -1) return;
+			let difference = event.shiftKey ? -1 : 1;
+
+			let newIndex = (currentTabIndex + difference) % links.length;
+			if (newIndex === -1) newIndex = links.length - 1;
+			goto(links[newIndex][0]);
+		}
+	}
 </script>
 
 <div class="is-flex is-flex-direction-column is-maxheight">
