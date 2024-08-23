@@ -69,7 +69,7 @@
 			{#each links as link}
 				<!-- TODO: Add "is-active" when on a page under this link -->
 				<li class:is-active={$page.route.id === link[0]}>
-					<a data-sveltekit-preload-data href={link[0]}>
+					<a data-sveltekit-preload-data href={link[0]} tabindex="-1">
 						{link[1]}
 					</a>
 				</li>
@@ -85,5 +85,10 @@
 <style lang="scss">
 	.container.is-maxheight.is-fluid.is-flex.is-flex-direction-column {
 		overflow-y: auto;
+	}
+
+	// Fix an issue where the tab underline was not visible
+	.tabs li > a {
+		margin-bottom: 1px;
 	}
 </style>
