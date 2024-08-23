@@ -9,7 +9,8 @@ use crossbeam_channel::unbounded;
 use prawnloader::{
     config::Config,
     downloaders::{
-        deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader,
+        deezer::Downloader as DeezerDownloader,
+        youtube::{Downloader as YoutubeDownloader, YoutubeRequest},
     },
     events::Event,
     models::music::{Song, SourceDownloader},
@@ -62,13 +63,20 @@ async fn get_songs(url: String, state: State<'_, DownloadersState>) -> Result<Ve
 }
 
 #[tauri::command]
-async fn request_download(song: Song, state: State<'_, DownloadersState>) -> Result<(), String> {
+async fn request_download(
+    song: Song,
+    state: State<'_, DownloadersState>,
+    config_state: State<'_, Mutex<ConfigState>>,
+) -> Result<(), String> {
     match song.source {
-        SourceDownloader::Youtube => state
-            .youtube_downloader
-            .request_download(song)
-            .await
-            .map_err(|err| err.to_string()),
+        SourceDownloader::Youtube => {
+            let format = config_state.lock().unwrap().config.youtube_format.clone();
+            state
+                .youtube_downloader
+                .request_download(YoutubeRequest { song, format })
+                .await
+                .map_err(|err| err.to_string())
+        }
         SourceDownloader::Deezer => state
             .deezer_downloader
             .request_download(song)

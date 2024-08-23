@@ -5,31 +5,36 @@ use rusty_ytdl::{
 };
 use tauri::api::path::download_dir;
 
-use crate::models::music::Song;
+use crate::{config::YoutubeFormat, models::music::Song};
 
 use super::{replace_illegal_characters, ProgressEvent, YoutubeId, YoutubePlaylistId};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
+pub struct YoutubeRequest {
+    pub song: Song,
+    pub format: YoutubeFormat,
+}
+
 pub struct Downloader {
-    download_tx: Sender<Song>,
+    download_tx: Sender<YoutubeRequest>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<Song>();
+        let (download_tx, download_rx) = unbounded::<YoutubeRequest>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
             let _progress_tx = progress_tx.clone();
 
             tokio::spawn(async move {
-                while let Ok(song) = _download_rx.recv() {
+                while let Ok(YoutubeRequest { song, format }) = _download_rx.recv() {
                     _progress_tx
                         .send(ProgressEvent::Start(song.clone()))
                         .unwrap();
 
-                    let result = download_song(&song).await;
+                    let result = download_song(&song, &format).await;
                     let progress = match result {
                         Ok(_) => ProgressEvent::Finish(song),
                         Err(err) => ProgressEvent::DownloadError(song, err.to_string()),
@@ -43,8 +48,10 @@ impl Downloader {
         Downloader { download_tx }
     }
 
-    pub async fn request_download(&self, song: Song) -> Result<(), VideoError> {
-        self.download_tx.send(song).expect("Channel should be open");
+    pub async fn request_download(&self, request: YoutubeRequest) -> Result<(), VideoError> {
+        self.download_tx
+            .send(request)
+            .expect("Channel should be open");
 
         Ok(())
     }
@@ -72,9 +79,8 @@ impl Downloader {
     }
 }
 
-async fn download_song(song: &Song) -> Result<(), VideoError> {
-    // TODO: Allow to choose file format
-    let file_format: String = String::from("mp3");
+async fn download_song(song: &Song, format: &YoutubeFormat) -> Result<(), VideoError> {
+    let file_format: String = format.to_string();
     let video = Video::new(song.id.clone())?;
 
     // TODO: Allow the target directory to be given.

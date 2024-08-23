@@ -9,7 +9,7 @@
 	export let data;
 
 	const { config } = data;
-	const youtubeFormats: UnionToTuple<Config['youtubeFormat']> = ['MP3', 'WEBM', 'WAV', 'OGG'];
+	const youtubeFormats: UnionToTuple<Config['youtubeFormat']> = ['mp3', 'webm', 'wav', 'ogg'];
 	const tempConfig = writable(structuredClone($config));
 
 	$: unsavedChanges = JSON.stringify($tempConfig) !== JSON.stringify($config);
