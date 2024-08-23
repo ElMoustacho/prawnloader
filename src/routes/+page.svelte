@@ -56,8 +56,12 @@
 		if (event.key === 'Enter' && event.ctrlKey) addToQueue();
 	}
 
+	let textarea: HTMLTextAreaElement;
 	onMount(() => {
 		document.addEventListener('keydown', ctrlEnterListener);
+
+		// Needs to be set in a timeout to focus properly
+		setTimeout(() => textarea.focus(), 0);
 	});
 
 	onDestroy(() => {
@@ -70,6 +74,7 @@
 		<textarea
 			class="textarea block mb-4"
 			placeholder="Enter one URL per line"
+			bind:this={textarea}
 			bind:value={$urls} />
 
 		<button class="button mb-4" on:click={addToQueue}>
