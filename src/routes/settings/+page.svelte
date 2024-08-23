@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { beforeNavigate, goto } from '$app/navigation';
+	import { createConfig, type ConfigStore } from '$lib/config';
+	import { invoke } from '$lib/tauri-wrapper';
 	import type { Config } from '$models/Config';
 	import { confirm } from '@tauri-apps/api/dialog';
 	import type { UnionToTuple } from 'src/union-to-tuple';
 	import { onDestroy, onMount } from 'svelte';
 	import { writable } from 'svelte/store';
 
-	export let data;
+	let config: ConfigStore;
 
-	const { config } = data;
 	const youtubeFormats: UnionToTuple<Config['youtubeFormat']> = ['mp3', 'webm', 'wav', 'ogg'];
-	const tempConfig = writable(structuredClone($config));
+	$: tempConfig = writable(structuredClone($config));
 
 	$: unsavedChanges = JSON.stringify($tempConfig) !== JSON.stringify($config);
 	let forceNavigation = false;
@@ -36,6 +37,11 @@
 	}
 
 	onMount(() => {
+		// Load config
+		invoke('get_config', {}).then(_config => {
+			config = createConfig(_config);
+		});
+
 		document.addEventListener('keydown', keydownListener);
 	});
 
@@ -52,128 +58,130 @@
 	}
 </script>
 
-<main>
-	<section class="box">
-		<h1 class="subtitle has-background-white"><i class="fa-solid fa-gear"></i> General</h1>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Placeholder</label>
-			<input type="text" class="input is-small" placeholder="Placeholder" />
-			<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-		</div>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Placeholder</label>
-			<input type="text" class="input is-small" placeholder="Placeholder" />
-			<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-		</div>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Placeholder</label>
-			<input type="text" class="input is-small" placeholder="Placeholder" />
-			<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-		</div>
-	</section>
+{#if $tempConfig !== undefined}
+	<main>
+		<section class="box">
+			<h1 class="subtitle has-background-white"><i class="fa-solid fa-gear"></i> General</h1>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Placeholder</label>
+				<input type="text" class="input is-small" placeholder="Placeholder" />
+				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+			</div>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Placeholder</label>
+				<input type="text" class="input is-small" placeholder="Placeholder" />
+				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+			</div>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Placeholder</label>
+				<input type="text" class="input is-small" placeholder="Placeholder" />
+				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+			</div>
+		</section>
 
-	<section class="box">
-		<h1 class="subtitle has-background-white">
-			<i class="fa-brands fa-deezer"></i> Youtube
-		</h1>
+		<section class="box">
+			<h1 class="subtitle has-background-white">
+				<i class="fa-brands fa-deezer"></i> Youtube
+			</h1>
 
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Music format</label>
-			<div class="control has-icons-left">
-				<div class="select is-primary is-small">
-					<select bind:value={$tempConfig.youtubeFormat}>
-						{#each youtubeFormats as youtubeFormat}
-							<option value={youtubeFormat}>{youtubeFormat}</option>
-						{/each}
-					</select>
-				</div>
-				<div class="icon is-small is-left">
-					<i class="fa-solid fa-file-audio"></i>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Music format</label>
+				<div class="control has-icons-left">
+					<div class="select is-primary is-small">
+						<select bind:value={$tempConfig.youtubeFormat}>
+							{#each youtubeFormats as youtubeFormat}
+								<option value={youtubeFormat}>{youtubeFormat}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="icon is-small is-left">
+						<i class="fa-solid fa-file-audio"></i>
+					</div>
 				</div>
 			</div>
-		</div>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Music format</label>
-			<div class="control has-icons-left">
-				<div class="select is-primary is-small">
-					<select bind:value={$tempConfig.youtubeFormat}>
-						{#each youtubeFormats as youtubeFormat}
-							<option value={youtubeFormat}>{youtubeFormat}</option>
-						{/each}
-					</select>
-				</div>
-				<div class="icon is-small is-left">
-					<i class="fa-solid fa-file-audio"></i>
-				</div>
-			</div>
-		</div>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Music format</label>
-			<div class="control has-icons-left">
-				<div class="select is-primary is-small">
-					<select bind:value={$tempConfig.youtubeFormat}>
-						{#each youtubeFormats as youtubeFormat}
-							<option value={youtubeFormat}>{youtubeFormat}</option>
-						{/each}
-					</select>
-				</div>
-				<div class="icon is-small is-left">
-					<i class="fa-solid fa-file-audio"></i>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Music format</label>
+				<div class="control has-icons-left">
+					<div class="select is-primary is-small">
+						<select bind:value={$tempConfig.youtubeFormat}>
+							{#each youtubeFormats as youtubeFormat}
+								<option value={youtubeFormat}>{youtubeFormat}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="icon is-small is-left">
+						<i class="fa-solid fa-file-audio"></i>
+					</div>
 				</div>
 			</div>
-		</div>
-	</section>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Music format</label>
+				<div class="control has-icons-left">
+					<div class="select is-primary is-small">
+						<select bind:value={$tempConfig.youtubeFormat}>
+							{#each youtubeFormats as youtubeFormat}
+								<option value={youtubeFormat}>{youtubeFormat}</option>
+							{/each}
+						</select>
+					</div>
+					<div class="icon is-small is-left">
+						<i class="fa-solid fa-file-audio"></i>
+					</div>
+				</div>
+			</div>
+		</section>
 
-	<section class="box">
-		<h1 class="subtitle has-background-white">
-			<i class="fa-brands fa-youtube"></i> Deezer
-		</h1>
+		<section class="box">
+			<h1 class="subtitle has-background-white">
+				<i class="fa-brands fa-youtube"></i> Deezer
+			</h1>
 
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Placeholder</label>
-			<input type="text" class="input is-small" placeholder="Placeholder" />
-			<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-		</div>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Placeholder</label>
-			<input type="text" class="input is-small" placeholder="Placeholder" />
-			<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-		</div>
-		<div class="field">
-			<!-- svelte-ignore a11y-label-has-associated-control -->
-			<label class="label">Placeholder</label>
-			<input type="text" class="input is-small" placeholder="Placeholder" />
-			<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-		</div>
-	</section>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Placeholder</label>
+				<input type="text" class="input is-small" placeholder="Placeholder" />
+				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+			</div>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Placeholder</label>
+				<input type="text" class="input is-small" placeholder="Placeholder" />
+				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+			</div>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Placeholder</label>
+				<input type="text" class="input is-small" placeholder="Placeholder" />
+				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
+			</div>
+		</section>
 
-	<section class="box settings-buttons">
-		<div class="buttons">
-			<button
-				title="<Ctrl+Enter> to validate changes."
-				class="button is-primary"
-				disabled={!unsavedChanges}
-				on:click={validateChanges}>
-				Confirm changes
-			</button>
-			<button
-				title="<Esc> to cancel changes."
-				class="button is-danger"
-				disabled={!unsavedChanges}
-				on:click={cancelChanges}>
-				Cancel changes
-			</button>
-		</div>
-	</section>
-</main>
+		<section class="box settings-buttons">
+			<div class="buttons">
+				<button
+					title="<Ctrl+Enter> to validate changes."
+					class="button is-primary"
+					disabled={!unsavedChanges}
+					on:click={validateChanges}>
+					Confirm changes
+				</button>
+				<button
+					title="<Esc> to cancel changes."
+					class="button is-danger"
+					disabled={!unsavedChanges}
+					on:click={cancelChanges}>
+					Cancel changes
+				</button>
+			</div>
+		</section>
+	</main>
+{/if}
 
 <style lang="scss">
 	// h1.subtitle {

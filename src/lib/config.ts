@@ -1,8 +1,10 @@
 import { invoke } from '$lib/tauri-wrapper';
 import type { Config } from '$models/Config';
-import { writable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
 
-export function createConfig(config: Config) {
+export type ConfigStore = Omit<Writable<Config>, 'update'>;
+
+export function createConfig(config: Config): ConfigStore {
 	const { subscribe, set } = writable(config);
 
 	return {
