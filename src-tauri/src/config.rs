@@ -3,6 +3,7 @@ use strum_macros::Display;
 use ts_rs::TS;
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone, Default, Display)]
+#[strum(serialize_all = "lowercase")]
 #[serde(rename_all = "lowercase")]
 pub enum YoutubeFormat {
     #[default]
