@@ -1,9 +1,12 @@
+use std::path::Path;
+
 use crossbeam_channel::{unbounded, Sender};
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
-    FFmpegArgs, Video, VideoError,
+    FFmpegArgs, Video, VideoDetails, VideoError,
 };
 use tauri::api::path::download_dir;
+use tokio::process::Command;
 
 use crate::{config::YoutubeFormat, models::music::Song};
 
@@ -84,11 +87,7 @@ async fn download_song(song: &Song, format: &YoutubeFormat) -> Result<(), VideoE
     let video = Video::new(song.id.clone())?;
 
     // TODO: Allow the target directory to be given.
-    let title = format!(
-        "{}.{}",
-        replace_illegal_characters(&song.title),
-        file_format
-    );
+    let title = format_title(&song.title, &file_format);
     let video_path = download_dir().unwrap().join(title);
     let args = FFmpegArgs {
         format: Some(file_format),
@@ -98,4 +97,50 @@ async fn download_song(song: &Song, format: &YoutubeFormat) -> Result<(), VideoE
     video.download_with_ffmpeg(video_path, Some(args)).await?;
 
     Ok(())
+}
+
+async fn split_video_by_chapters(
+    video_details: VideoDetails,
+    file_format: String,
+    video_path: &Path,
+) {
+    for (index, chapter) in video_details.chapters.iter().enumerate() {
+        let output_filename = format_title(&chapter.title, &file_format);
+        let output_path = download_dir().unwrap().join(output_filename);
+        let start = chapter.start_time.to_string();
+        let end;
+        if index != video_details.chapters.len() - 1 {
+            end = video_details
+                .chapters
+                .get(index + 1)
+                .unwrap()
+                .start_time
+                .to_string();
+        } else {
+            end = video_details.length_seconds.clone();
+        }
+
+        let args = vec![
+            "-i",
+            video_path.to_str().unwrap(),
+            "-ss",
+            &start,
+            "-to",
+            &end,
+            "-c:a",
+            "copy",
+            output_path.to_str().unwrap(),
+        ];
+        Command::new("ffmpeg")
+            .args(args)
+            .spawn()
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+    }
+}
+
+fn format_title(title: &str, extension: &str) -> String {
+    format!("{}.{}", replace_illegal_characters(&title), extension)
 }
