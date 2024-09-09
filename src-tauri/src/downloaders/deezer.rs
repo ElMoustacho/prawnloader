@@ -1,28 +1,31 @@
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
-use deezer::{models::Track, DeezerClient};
+use deezer::DeezerClient;
 use deezer_downloader::{
-    song::{Album, Artist},
+    song::{Album as DownloaderAlbum, Artist as DownloaderArtist},
     Downloader as DeezerDownloader, SongMetadata,
 };
 use futures::future::join_all;
 use tauri::api::path::download_dir;
 
-use crate::models::music::Song;
+use crate::{
+    config::Config,
+    models::music::{Album, Item, Song},
+};
 
-use super::{replace_illegal_characters, DeezerId, ProgressEvent};
+use super::{replace_illegal_characters, DeezerId, DownloadRequest, ProgressEvent};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
 #[derive(Debug)]
 pub struct Downloader {
     deezer_client: DeezerClient,
-    download_tx: Sender<Song>,
+    download_tx: Sender<DownloadRequest>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<Song>();
+        let (download_tx, download_rx) = unbounded::<DownloadRequest>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
@@ -30,16 +33,30 @@ impl Downloader {
 
             tokio::spawn(async move {
                 let downloader = DeezerDownloader::new().await.unwrap();
-                while let Ok(song) = _download_rx.recv() {
-                    _progress_tx
-                        .send(ProgressEvent::Start(song.clone()))
-                        .unwrap();
+                while let Ok(request) = _download_rx.recv() {
+                    let result = match request.item {
+                        Item::DeezerAlbum {
+                            album,
+                            merge_tracks,
+                        } => {
+                            _progress_tx
+                                .send(ProgressEvent::Start(request.request_id))
+                                .unwrap();
+                            download_album(album, merge_tracks, &downloader).await
+                        }
+                        Item::DeezerTrack { track } => {
+                            _progress_tx
+                                .send(ProgressEvent::Start(request.request_id))
+                                .unwrap();
+                            download_song(track, &downloader).await
+                        }
+                        _ => continue,
+                    };
 
-                    let result = download_song(song.clone(), &downloader).await;
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(song),
+                        Ok(_) => ProgressEvent::Finish(request.request_id),
                         // FIXME: Add download error String
-                        Err(_) => ProgressEvent::DownloadError(song, String::new()),
+                        Err(_) => ProgressEvent::DownloadError(request.request_id, String::new()),
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -53,41 +70,46 @@ impl Downloader {
         }
     }
 
-    pub async fn request_download(&self, song: Song) -> Result<()> {
-        self.download_tx.send(song).expect("Channel should be open");
-
-        Ok(())
+    pub async fn request_download(&self, request: DownloadRequest, config: Config) {
+        self.download_tx
+            .send(request)
+            .expect("Channel should be open");
     }
 
-    pub async fn get_track(&self, id: DeezerId) -> Option<Track> {
+    pub async fn get_song(&self, id: DeezerId) -> Option<Song> {
         let maybe_track = self.deezer_client.track(id).await;
 
         // Check if the song was found AND is readable
         match maybe_track {
-            Ok(Some(track)) if track.readable => Some(track),
+            Ok(Some(track)) if track.readable => Some(track.into()),
             _ => None,
         }
     }
 
-    pub async fn get_album_tracks(&self, id: DeezerId) -> Option<Vec<Song>> {
+    pub async fn get_album(&self, id: DeezerId) -> Option<Album> {
         let maybe_album = self.deezer_client.album(id).await;
         if let Ok(Some(album)) = maybe_album {
             let futures: Vec<_> = album
                 .tracks
                 .into_iter()
-                .map(|album_track| {
-                    async move {
-                        // FIXME: Expect may panic on unsable connections
-                        album_track
-                            .get_full()
-                            .await
-                            .expect("Track should always be available.")
-                            .into()
+                .map(|album_track| async move {
+                    loop {
+                        match album_track.get_full().await {
+                            Ok(track) => return track.into(),
+                            Err(err) => match err {
+                                deezer::DeezerError::HttpError(_) => continue,
+                            },
+                        }
                     }
                 })
                 .collect();
+            let songs = join_all(futures).await;
 
-            return Some(join_all(futures).await);
+            return Some(Album {
+                title: album.title,
+                cover_url: album.cover,
+                songs,
+            });
         }
 
         None
@@ -105,6 +127,15 @@ async fn download_song(song: Song, downloader: &DeezerDownloader) -> Result<()> 
     write_song_to_file(&song)?;
 
     Ok(())
+}
+
+// TODO: Implement
+async fn download_album(
+    album: Album,
+    merge_tracks: bool,
+    downloader: &DeezerDownloader,
+) -> Result<()> {
+    Err(eyre!("Not implemented"))
 }
 
 /// Write a [Song] to the download directory.
@@ -132,12 +163,12 @@ fn metadata_from_song(song: Song) -> SongMetadata {
     SongMetadata {
         id: song.id.parse().unwrap_or_default(),
         title: song.title,
-        artist: Artist {
+        artist: DownloaderArtist {
             // Id is not used in the metadata
             id: Default::default(),
             name: song.artist,
         },
-        album: Album {
+        album: DownloaderAlbum {
             // Id is not used in the metadata
             id: Default::default(),
             title: song.album.title,

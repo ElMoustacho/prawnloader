@@ -1,13 +1,14 @@
+import type { Config } from '$models/Config';
+import type { Event } from '$models/Event';
+import type { Item } from '$models/Item';
+import type { QueueItem } from '$models/QueueItem';
+import { invoke } from '@tauri-apps/api';
 import {
 	listen,
-	type TauriEvent,
 	type EventCallback,
+	type TauriEvent,
 	type UnlistenFn,
 } from '@tauri-apps/api/event';
-import type { Event } from '$models/Event';
-import { invoke } from '@tauri-apps/api';
-import type { Song } from '$models/Song';
-import type { Config } from '$models/Config';
 
 type EventMap = {
 	[K in Event['type']]: Extract<Event, { type: K }>['payload'];
@@ -32,8 +33,8 @@ type CommandArgs<C extends Command> = Commands[C][0];
 type CommandReturn<C extends Command> = Commands[C][1];
 
 export interface Commands {
-	get_songs: [{ url: string }, Song[]];
-	request_download: [{ song: Song }, void];
+	get_item: [{ url: string }, Item];
+	request_download: [{ request: QueueItem }, void];
 	get_config: [NoParams, Config];
 	update_config: [{ config: Config }, Config];
 }
@@ -42,4 +43,4 @@ function _invoke<C extends Command>(cmd: C, args: CommandArgs<C>): Promise<Comma
 	return invoke(cmd, args);
 }
 
-export { _listen as listen, _invoke as invoke };
+export { _invoke as invoke, _listen as listen };

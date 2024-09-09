@@ -9,11 +9,11 @@ use crossbeam_channel::unbounded;
 use prawnloader::{
     config::Config,
     downloaders::{
-        deezer::Downloader as DeezerDownloader,
-        youtube::{Downloader as YoutubeDownloader, YoutubeRequest},
+        deezer::Downloader as DeezerDownloader, youtube::Downloader as YoutubeDownloader,
+        DownloadRequest,
     },
     events::Event,
-    models::music::{Song, SourceDownloader},
+    models::music::Item,
     parsers::{parse_id, ParsedId},
 };
 use tauri::{Manager, State};
@@ -28,61 +28,69 @@ struct ConfigState {
 }
 
 #[tauri::command]
-async fn get_songs(url: String, state: State<'_, DownloadersState>) -> Result<Vec<Song>, String> {
+async fn get_item(url: String, state: State<'_, DownloadersState>) -> Result<Item, String> {
     let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
-    let songs: Vec<Song> = match parsed_id {
-        ParsedId::DeezerAlbum(id) => state
-            .deezer_downloader
-            .get_album_tracks(id)
-            .await
-            .ok_or(format!("Invalid album id {id}"))?,
-        ParsedId::DeezerTrack(id) => state
-            .deezer_downloader
-            .get_track(id)
-            .await
-            .map(|x| vec![x.into()])
-            .ok_or(format!("Invalid track id {id}"))?,
-        ParsedId::YoutubeVideo(id) => state
-            .youtube_downloader
-            .get_song(id)
-            .await
-            .map(|x| vec![x])
-            .ok_or(format!("Invalid video id"))?,
-        ParsedId::YoutubePlaylist(id) => state
-            .youtube_downloader
-            .get_playlist_songs(id)
-            .await
-            .ok_or(format!("Invalid playlist id"))?,
+    let item: Item = match parsed_id {
+        ParsedId::DeezerAlbum(id) => Item::DeezerAlbum {
+            album: state
+                .deezer_downloader
+                .get_album(id)
+                .await
+                .ok_or(format!("Invalid album id {id}"))?,
+            merge_tracks: false,
+        },
+        ParsedId::DeezerTrack(id) => Item::DeezerTrack {
+            track: state
+                .deezer_downloader
+                .get_song(id)
+                .await
+                .ok_or(format!("Invalid track id {id}"))?,
+        },
+        ParsedId::YoutubeVideo(id) => Item::YoutubeVideo {
+            video: state
+                .youtube_downloader
+                .get_song(id)
+                .await
+                .ok_or(format!("Invalid video id"))?,
+            split_by_chapters: false,
+        },
+        ParsedId::YoutubePlaylist(id) => Item::YoutubePlaylist {
+            playlist: state
+                .youtube_downloader
+                .get_playlist(id)
+                .await
+                .ok_or(format!("Invalid playlist id"))?,
+        },
     };
 
-    let songs = songs.into_iter().map(|track| Song::from(track)).collect();
-
-    Ok(songs)
+    Ok(item)
 }
 
 #[tauri::command]
 async fn request_download(
-    song: Song,
+    request: DownloadRequest,
     state: State<'_, DownloadersState>,
     config_state: State<'_, Mutex<ConfigState>>,
 ) -> Result<(), String> {
-    match song.source {
-        SourceDownloader::Youtube => {
-            let format = config_state.lock().unwrap().config.youtube_format.clone();
+    let config = config_state.lock().unwrap().config.clone();
+    match request.item {
+        Item::DeezerAlbum { .. } | Item::DeezerTrack { .. } => {
+            state
+                .deezer_downloader
+                .request_download(request, config)
+                .await;
+        }
+        Item::YoutubeVideo { .. } | Item::YoutubePlaylist { .. } => {
             state
                 .youtube_downloader
-                .request_download(YoutubeRequest { song, format })
-                .await
-                .map_err(|err| err.to_string())
+                .request_download(request, config)
+                .await;
         }
-        SourceDownloader::Deezer => state
-            .deezer_downloader
-            .request_download(song)
-            .await
-            .map_err(|err| err.to_string()),
     }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -147,7 +155,7 @@ async fn main() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_songs,
+            get_item,
             request_download,
             get_config,
             update_config

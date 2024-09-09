@@ -1,27 +1,49 @@
 use serde::Serialize;
 use ts_rs::TS;
+use uuid::Uuid;
 
-use crate::{downloaders::ProgressEvent, models::music::Song};
+use crate::downloaders::ProgressEvent;
 
 #[derive(Clone, TS, Serialize, strum_macros::Display)]
 #[ts(export)]
 #[serde(rename_all = "snake_case", tag = "type", content = "payload")]
 #[strum(serialize_all = "snake_case")]
 pub enum Event {
-    Waiting(Song),
-    Start(Song),
-    Finish(Song),
-    DownloadError(Song, String),
-    RemoveFromQueue(Song),
+    Waiting(
+        #[ts(type = "string")]
+        #[serde(with = "uuid::serde::braced")]
+        Uuid,
+    ),
+    Start(
+        #[ts(type = "string")]
+        #[serde(with = "uuid::serde::braced")]
+        Uuid,
+    ),
+    Finish(
+        #[ts(type = "string")]
+        #[serde(with = "uuid::serde::braced")]
+        Uuid,
+    ),
+    DownloadError(
+        #[ts(type = "string")]
+        #[serde(with = "uuid::serde::braced")]
+        Uuid,
+        String,
+    ),
+    RemoveFromQueue(
+        #[ts(type = "string")]
+        #[serde(with = "uuid::serde::braced")]
+        Uuid,
+    ),
 }
 
 impl From<ProgressEvent> for Event {
     fn from(event: ProgressEvent) -> Self {
         match event {
-            ProgressEvent::Waiting(song) => Self::Waiting(song),
-            ProgressEvent::Start(song) => Self::Start(song),
-            ProgressEvent::Finish(song) => Self::Finish(song),
-            ProgressEvent::DownloadError(song, err_msg) => Self::DownloadError(song, err_msg),
+            ProgressEvent::Waiting(id) => Self::Waiting(id),
+            ProgressEvent::Start(id) => Self::Start(id),
+            ProgressEvent::Finish(id) => Self::Finish(id),
+            ProgressEvent::DownloadError(id, err_msg) => Self::DownloadError(id, err_msg),
         }
     }
 }

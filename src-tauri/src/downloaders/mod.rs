@@ -1,6 +1,8 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
+use uuid::Uuid;
 
-use crate::models::music::Song;
+use crate::models::music::Item;
 
 pub mod deezer;
 pub mod youtube;
@@ -11,16 +13,20 @@ pub type YoutubeId = String;
 
 #[derive(Debug, Clone, Serialize, strum_macros::Display)]
 pub enum ProgressEvent {
-    Waiting(Song),
-    Start(Song),
-    Finish(Song),
-    DownloadError(Song, String),
+    Waiting(Uuid),
+    Start(Uuid),
+    Finish(Uuid),
+    DownloadError(Uuid, String),
 }
 
-#[derive(Debug, strum_macros::Display)]
-pub enum DownloadStatus {
-    Downloading,
-    Inactive,
+#[derive(TS, Serialize, Deserialize)]
+#[serde(rename = "QueueItem")]
+#[ts(export)]
+pub struct DownloadRequest {
+    #[ts(type = "string")]
+    #[serde(with = "uuid::serde::braced")]
+    pub request_id: Uuid,
+    pub item: Item,
 }
 
 /// Replaces illegal characters for a Windows file.

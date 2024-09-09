@@ -7,23 +7,39 @@ use ts_rs::TS;
 pub struct Album {
     pub title: String,
     pub cover_url: String,
+    pub songs: Vec<Song>,
 }
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "lowercase")]
-pub enum SourceDownloader {
-    Youtube,
-    Deezer,
+pub struct SongAlbum {
+    pub title: String,
+    pub cover_url: String,
+}
+
+#[derive(TS, Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+#[ts(export)]
+pub enum Item {
+    #[serde(rename_all = "camelCase")]
+    DeezerAlbum { album: Album, merge_tracks: bool },
+    #[serde(rename_all = "camelCase")]
+    DeezerTrack { track: Song },
+    #[serde(rename_all = "camelCase")]
+    YoutubeVideo {
+        video: Song,
+        split_by_chapters: bool,
+    },
+    #[serde(rename_all = "camelCase")]
+    YoutubePlaylist { playlist: Album },
 }
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
 #[ts(export)]
 pub struct Song {
-    #[ts(inline)]
-    pub source: SourceDownloader,
     pub id: String,
     pub title: String,
-    pub album: Album,
+    #[ts(inline)]
+    pub album: SongAlbum,
     pub artist: String,
     pub release_date: String,
 }
@@ -31,11 +47,10 @@ pub struct Song {
 impl From<Track> for Song {
     fn from(track: Track) -> Self {
         Self {
-            source: SourceDownloader::Deezer,
             id: track.id.to_string(),
             title: track.title,
             artist: track.artist.name,
-            album: Album {
+            album: SongAlbum {
                 title: track.album.title,
                 cover_url: track.album.cover,
             },
@@ -52,10 +67,9 @@ impl From<rusty_ytdl::search::Video> for Song {
             .map_or_else(String::default, |t| t.url.clone());
 
         Self {
-            source: SourceDownloader::Youtube,
             id: video.id,
             title: video.title,
-            album: Album {
+            album: SongAlbum {
                 title: String::new(),
                 cover_url: thumbnail,
             },
@@ -71,7 +85,7 @@ impl From<rusty_ytdl::VideoDetails> for Song {
             .author
             .map(|author| author.name)
             .unwrap_or_default();
-        let album = Album {
+        let album = SongAlbum {
             title: String::new(),
             cover_url: video_details
                 .thumbnails
@@ -81,7 +95,6 @@ impl From<rusty_ytdl::VideoDetails> for Song {
         };
 
         Self {
-            source: SourceDownloader::Youtube,
             id: video_details.video_id,
             title: video_details.title,
             album,

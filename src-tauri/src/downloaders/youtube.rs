@@ -1,16 +1,22 @@
 use std::path::Path;
 
+use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
-    FFmpegArgs, Video, VideoDetails, VideoError,
+    FFmpegArgs, Video, VideoDetails,
 };
 use tauri::api::path::download_dir;
 use tokio::process::Command;
 
-use crate::{config::YoutubeFormat, models::music::Song};
+use crate::{
+    config::{Config, YoutubeFormat},
+    models::music::{Album, Item, Song},
+};
 
-use super::{replace_illegal_characters, ProgressEvent, YoutubeId, YoutubePlaylistId};
+use super::{
+    replace_illegal_characters, DownloadRequest, ProgressEvent, YoutubeId, YoutubePlaylistId,
+};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
@@ -20,27 +26,47 @@ pub struct YoutubeRequest {
 }
 
 pub struct Downloader {
-    download_tx: Sender<YoutubeRequest>,
+    download_tx: Sender<DownloadRequest>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<YoutubeRequest>();
+        let (download_tx, download_rx) = unbounded::<DownloadRequest>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
             let _progress_tx = progress_tx.clone();
 
             tokio::spawn(async move {
-                while let Ok(YoutubeRequest { song, format }) = _download_rx.recv() {
-                    _progress_tx
-                        .send(ProgressEvent::Start(song.clone()))
-                        .unwrap();
-
-                    let result = download_song(&song, &format).await;
+                while let Ok(request) = _download_rx.recv() {
+                    let result = match request.item {
+                        Item::YoutubeVideo {
+                            video,
+                            split_by_chapters,
+                        } => {
+                            _progress_tx
+                                .send(ProgressEvent::Start(request.request_id))
+                                .unwrap();
+                            download_song(
+                                video,
+                                split_by_chapters,
+                                todo!("Add a way to choose extension."),
+                            )
+                            .await
+                        }
+                        Item::YoutubePlaylist { playlist } => {
+                            _progress_tx
+                                .send(ProgressEvent::Start(request.request_id))
+                                .unwrap();
+                            download_album(playlist, todo!("Add a way to choose extension.")).await
+                        }
+                        _ => continue,
+                    };
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(song),
-                        Err(err) => ProgressEvent::DownloadError(song, err.to_string()),
+                        Ok(_) => ProgressEvent::Finish(request.request_id),
+                        Err(err) => {
+                            ProgressEvent::DownloadError(request.request_id, err.to_string())
+                        }
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -51,12 +77,10 @@ impl Downloader {
         Downloader { download_tx }
     }
 
-    pub async fn request_download(&self, request: YoutubeRequest) -> Result<(), VideoError> {
+    pub async fn request_download(&self, request: DownloadRequest, config: Config) {
         self.download_tx
             .send(request)
             .expect("Channel should be open");
-
-        Ok(())
     }
 
     pub async fn get_song(&self, id: YoutubeId) -> Option<Song> {
@@ -66,7 +90,7 @@ impl Downloader {
         Some(video_details.into())
     }
 
-    pub async fn get_playlist_songs(&self, id: YoutubePlaylistId) -> Option<Vec<Song>> {
+    pub async fn get_playlist(&self, id: YoutubePlaylistId) -> Option<Album> {
         let options = PlaylistSearchOptions {
             fetch_all: true,
             ..Default::default()
@@ -78,11 +102,16 @@ impl Downloader {
             .map(|video| video.into())
             .collect();
 
-        Some(songs)
+        Some(Album {
+            title: playlist.name,
+            // FIXME: Add cover
+            cover_url: String::new(),
+            songs,
+        })
     }
 }
 
-async fn download_song(song: &Song, format: &YoutubeFormat) -> Result<(), VideoError> {
+async fn download_song(song: Song, split_by_chapters: bool, format: &YoutubeFormat) -> Result<()> {
     let file_format: String = format.to_string();
     let video = Video::new(song.id.clone())?;
 
@@ -97,6 +126,10 @@ async fn download_song(song: &Song, format: &YoutubeFormat) -> Result<(), VideoE
     video.download_with_ffmpeg(video_path, Some(args)).await?;
 
     Ok(())
+}
+
+async fn download_album(playlist: Album, format: &YoutubeFormat) -> Result<()> {
+    Err(eyre!("Not implemented"))
 }
 
 async fn split_video_by_chapters(
