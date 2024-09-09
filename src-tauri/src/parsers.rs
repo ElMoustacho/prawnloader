@@ -160,7 +160,7 @@ mod tests {
     fn parses_deezer_album() {
         let url = Url::parse(DEEZER_ALBUM_URL).expect("URL should be valid");
         let parsed_id = parse_deezer(&url).expect("URL should be valid");
-        let expected_id: u64 = 63318982;
+        let expected_id: DeezerId = 63318982;
 
         assert_eq!(parsed_id, ParsedId::DeezerAlbum(expected_id));
     }
@@ -169,7 +169,7 @@ mod tests {
     fn parses_deezer_track() {
         let url = Url::parse(DEEZER_TRACK_URL).expect("URL should be valid");
         let parsed_id = parse_deezer(&url).expect("URL should be valid");
-        let expected_id: u64 = 498467242;
+        let expected_id: DeezerId = 498467242;
 
         assert_eq!(parsed_id, ParsedId::DeezerTrack(expected_id));
     }

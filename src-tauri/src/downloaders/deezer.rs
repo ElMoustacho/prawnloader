@@ -10,7 +10,7 @@ use tauri::api::path::download_dir;
 
 use crate::models::music::Song;
 
-use super::{replace_illegal_characters, ProgressEvent};
+use super::{replace_illegal_characters, DeezerId, ProgressEvent};
 
 static DOWNLOAD_THREADS: u64 = 4;
 
@@ -59,7 +59,7 @@ impl Downloader {
         Ok(())
     }
 
-    pub async fn get_track(&self, id: u64) -> Option<Track> {
+    pub async fn get_track(&self, id: DeezerId) -> Option<Track> {
         let maybe_track = self.deezer_client.track(id).await;
 
         // Check if the song was found AND is readable
@@ -69,7 +69,7 @@ impl Downloader {
         }
     }
 
-    pub async fn get_album_tracks(&self, id: u64) -> Option<Vec<Song>> {
+    pub async fn get_album_tracks(&self, id: DeezerId) -> Option<Vec<Song>> {
         let maybe_album = self.deezer_client.album(id).await;
         if let Ok(Some(album)) = maybe_album {
             let futures: Vec<_> = album
