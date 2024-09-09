@@ -35,7 +35,14 @@ strum_macros = "0.26.4"
 thiserror = "1.0.50"
 ts-rs = "9.0.1"
 rusty_ytdl = { version = "0.7.4", features = ["ffmpeg"] }
-
+[dependencies.uuid]
+version = "1.10.0"
+features = [
+	"serde",
+	"v4",                # Lets you generate random UUIDs
+	"fast-rng",          # Use a faster (but still sufficiently random) RNG
+	"macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]
 
 [features]
 # by default Tauri runs in production mode
