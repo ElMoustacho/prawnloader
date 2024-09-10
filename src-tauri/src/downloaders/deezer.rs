@@ -17,15 +17,17 @@ use super::{replace_illegal_characters, DeezerId, DownloadRequest, ProgressEvent
 
 static DOWNLOAD_THREADS: u64 = 4;
 
+struct DeezerRequest(DownloadRequest, Config);
+
 #[derive(Debug)]
 pub struct Downloader {
     deezer_client: DeezerClient,
-    download_tx: Sender<DownloadRequest>,
+    download_tx: Sender<DeezerRequest>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<DownloadRequest>();
+        let (download_tx, download_rx) = unbounded::<DeezerRequest>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
@@ -33,7 +35,7 @@ impl Downloader {
 
             tokio::spawn(async move {
                 let downloader = DeezerDownloader::new().await.unwrap();
-                while let Ok(request) = _download_rx.recv() {
+                while let Ok(DeezerRequest(request, ..)) = _download_rx.recv() {
                     let result = match request.item {
                         Item::DeezerAlbum {
                             album,
@@ -72,7 +74,7 @@ impl Downloader {
 
     pub async fn request_download(&self, request: DownloadRequest, config: Config) {
         self.download_tx
-            .send(request)
+            .send(DeezerRequest(request, config))
             .expect("Channel should be open");
     }
 

@@ -20,25 +20,24 @@ use super::{
 
 static DOWNLOAD_THREADS: u64 = 4;
 
-pub struct YoutubeRequest {
-    pub song: Song,
-    pub format: YoutubeFormat,
-}
+struct YoutubeRequest(DownloadRequest, Config);
 
 pub struct Downloader {
-    download_tx: Sender<DownloadRequest>,
+    download_tx: Sender<YoutubeRequest>,
 }
 
 impl Downloader {
     pub fn new(progress_tx: Sender<ProgressEvent>) -> Self {
-        let (download_tx, download_rx) = unbounded::<DownloadRequest>();
+        let (download_tx, download_rx) = unbounded::<YoutubeRequest>();
 
         for _ in 0..DOWNLOAD_THREADS {
             let _download_rx = download_rx.clone();
             let _progress_tx = progress_tx.clone();
 
             tokio::spawn(async move {
-                while let Ok(request) = _download_rx.recv() {
+                while let Ok(YoutubeRequest(request, Config { youtube_format, .. })) =
+                    _download_rx.recv()
+                {
                     let result = match request.item {
                         Item::YoutubeVideo {
                             video,
@@ -47,18 +46,13 @@ impl Downloader {
                             _progress_tx
                                 .send(ProgressEvent::Start(request.request_id))
                                 .unwrap();
-                            download_song(
-                                video,
-                                split_by_chapters,
-                                todo!("Add a way to choose extension."),
-                            )
-                            .await
+                            download_song(video, split_by_chapters, &youtube_format).await
                         }
                         Item::YoutubePlaylist { playlist } => {
                             _progress_tx
                                 .send(ProgressEvent::Start(request.request_id))
                                 .unwrap();
-                            download_album(playlist, todo!("Add a way to choose extension.")).await
+                            download_album(playlist, &youtube_format).await
                         }
                         _ => continue,
                     };
@@ -79,7 +73,7 @@ impl Downloader {
 
     pub async fn request_download(&self, request: DownloadRequest, config: Config) {
         self.download_tx
-            .send(request)
+            .send(YoutubeRequest(request, config))
             .expect("Channel should be open");
     }
 
