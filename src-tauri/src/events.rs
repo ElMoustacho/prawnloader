@@ -9,32 +9,11 @@ use crate::downloaders::ProgressEvent;
 #[serde(rename_all = "snake_case", tag = "type", content = "payload")]
 #[strum(serialize_all = "snake_case")]
 pub enum Event {
-    Waiting(
-        #[ts(type = "string")]
-        #[serde(with = "uuid::serde::braced")]
-        Uuid,
-    ),
-    Start(
-        #[ts(type = "string")]
-        #[serde(with = "uuid::serde::braced")]
-        Uuid,
-    ),
-    Finish(
-        #[ts(type = "string")]
-        #[serde(with = "uuid::serde::braced")]
-        Uuid,
-    ),
-    DownloadError(
-        #[ts(type = "string")]
-        #[serde(with = "uuid::serde::braced")]
-        Uuid,
-        String,
-    ),
-    RemoveFromQueue(
-        #[ts(type = "string")]
-        #[serde(with = "uuid::serde::braced")]
-        Uuid,
-    ),
+    Waiting(#[ts(type = "string")] Uuid),
+    Start(#[ts(type = "string")] Uuid),
+    Finish(#[ts(type = "string")] Uuid),
+    DownloadError(#[ts(type = "string")] Uuid, String),
+    RemoveFromQueue(#[ts(type = "string")] Uuid),
 }
 
 impl From<ProgressEvent> for Event {

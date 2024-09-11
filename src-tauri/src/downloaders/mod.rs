@@ -24,7 +24,6 @@ pub enum ProgressEvent {
 #[ts(export)]
 pub struct DownloadRequest {
     #[ts(type = "string")]
-    #[serde(with = "uuid::serde::braced")]
     pub request_id: Uuid,
     pub item: Item,
 }
