@@ -98,6 +98,7 @@ impl Downloader {
 
         Some(Album {
             title: playlist.name,
+            artist: playlist.channel.name,
             // FIXME: Add cover
             cover_url: String::new(),
             songs,

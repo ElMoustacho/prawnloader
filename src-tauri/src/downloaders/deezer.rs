@@ -109,6 +109,7 @@ impl Downloader {
 
             return Some(Album {
                 title: album.title,
+                artist: album.artist.name,
                 cover_url: album.cover,
                 songs,
             });

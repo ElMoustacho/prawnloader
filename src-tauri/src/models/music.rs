@@ -6,6 +6,7 @@ use ts_rs::TS;
 #[ts(export)]
 pub struct Album {
     pub title: String,
+    pub artist: String,
     pub cover_url: String,
     pub songs: Vec<Song>,
 }
