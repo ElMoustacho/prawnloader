@@ -3208,6 +3208,7 @@ dependencies = [
  "strum_macros",
  "tauri",
  "tauri-build",
+ "tempfile",
  "thiserror",
  "tokio",
  "ts-rs",
