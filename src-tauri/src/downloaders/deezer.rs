@@ -147,17 +147,22 @@ fn write_song_to_file(song: &deezer_downloader::Song) -> Result<()> {
         return Ok(());
     };
 
-    let song_title = format!(
-        "{} - {}.mp3",
-        song.tag.artist().unwrap_or_default(),
-        song.tag.title().unwrap_or_default()
-    );
-    let song_title = replace_illegal_characters(&song_title);
-
+    let song_title = format_song(song);
     song.write_to_file(download_dir.join(song_title))
         .map_err(|_| eyre!("An error occured while writing the file."))?;
 
     Ok(())
+}
+
+fn format_song(song: &deezer_downloader::Song) -> String {
+    format_title(
+        song.tag.artist().unwrap_or_default(),
+        song.tag.title().unwrap_or_default(),
+    )
+}
+
+fn format_title(artist: &str, title: &str) -> String {
+    replace_illegal_characters(&(format!("{} - {}.mp3", artist, title)))
 }
 
 fn metadata_from_song(song: Song) -> SongMetadata {
