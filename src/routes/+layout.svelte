@@ -67,7 +67,6 @@
 	<div class="tabs m-0">
 		<ul>
 			{#each links as link}
-				<!-- TODO: Add "is-active" when on a page under this link -->
 				<li class:is-active={$page.route.id === link[0]}>
 					<a data-sveltekit-preload-data href={link[0]} tabindex="-1">
 						{link[1]}
