@@ -1,3 +1,5 @@
+use std::process::Stdio;
+
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
 use deezer::DeezerClient;
@@ -7,6 +9,7 @@ use deezer_downloader::{
 };
 use futures::future::join_all;
 use tauri::api::path::download_dir;
+use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
     config::Config,
@@ -125,18 +128,94 @@ async fn download_song(
 
     write_song_to_file(&song)?;
 
-    let _ = progress_tx.send(ProgressEvent::Finish());
+    let _ = progress_tx.send(ProgressEvent::Finish(todo!(
+        "Handle UUID for individual songs."
+    )));
 
     Ok(())
 }
 
-// TODO: Implement
 async fn download_album(
     album: Album,
     merge_tracks: bool,
     downloader: &DeezerDownloader,
+    progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    Err(eyre!("Not implemented"))
+    let download_dir = download_dir().ok_or(eyre!("Cannot find download directory."))?;
+    let maybe_songs: Vec<_> = album
+        .songs
+        .into_iter()
+        .map(|song| {
+            deezer_downloader::Song::download_from_metadata(metadata_from_song(song), downloader)
+        })
+        .collect();
+    let maybe_songs = join_all(maybe_songs).await;
+
+    if merge_tracks {
+        // Immediatly return if there is an error on any song
+        let songs: Result<Vec<deezer_downloader::Song>, _> = maybe_songs.into_iter().collect();
+        let songs = songs.map_err(|err| eyre!(err.to_string()))?;
+
+        let file_name = format_title(&album.artist, &album.title);
+        let file_path_str = download_dir
+            .join(file_name)
+            .into_os_string()
+            .into_string()
+            .unwrap();
+
+        let args = vec![
+            "-y",
+            "-f",
+            "mp3",
+            "-i",
+            "pipe:",
+            "-c:a",
+            "copy",
+            &file_path_str,
+        ];
+        let mut ffmpeg_process = Command::new("ffmpeg")
+            .args(args)
+            .current_dir(download_dir)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .kill_on_drop(true)
+            .spawn()
+            .unwrap();
+
+        let mut ffmpeg_stdin = ffmpeg_process.stdin.take().unwrap();
+
+        for song in songs {
+            ffmpeg_stdin.write_all(&song.content).await?;
+        }
+
+        drop(ffmpeg_stdin);
+        ffmpeg_process.wait().await?;
+
+        progress_tx.send(ProgressEvent::Finish(todo!(
+            "Handle UUID for individual songs."
+        )));
+
+        Ok(())
+    } else {
+        for maybe_song in maybe_songs {
+            let result: Result<()> = match maybe_song {
+                Ok(song) => write_song_to_file(&song),
+                Err(err) => Err(eyre!(err)),
+            };
+
+            let _ = match result {
+                Ok(_) => progress_tx.send(ProgressEvent::Finish(todo!(
+                    "Handle UUID for individual songs."
+                ))),
+                Err(err) => progress_tx.send(ProgressEvent::DownloadError(
+                    todo!("Handle UUID for individual songs."),
+                    err.to_string(),
+                )),
+            };
+        }
+
+        Ok(())
+    }
 }
 
 /// Write a [Song] to the download directory.
