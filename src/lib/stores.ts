@@ -1,4 +1,4 @@
-import type { QueueSong } from './music';
+import type { QueueItem } from '$models/QueueItem';
 import { writable, type Writable } from 'svelte/store';
 
-export const queue: Writable<QueueSong[]> = writable([]);
+export const queue: Writable<QueueItem[]> = writable([]);
