@@ -17,6 +17,8 @@ pub enum ProgressEvent {
     Start(Uuid),
     Finish(Uuid),
     DownloadError(Uuid, String),
+    AlbumTrackComplete(Uuid, usize),
+    AlbumTrackError(Uuid, usize, String),
 }
 
 #[derive(TS, Serialize, Deserialize)]

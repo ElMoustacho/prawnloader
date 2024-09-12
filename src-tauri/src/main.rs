@@ -130,11 +130,17 @@ async fn main() {
                 while let Ok(event) = event_rx.recv() {
                     let event_name = &event.to_string()[..];
                     match event {
-                        Event::Waiting(track) => handle.emit_all(event_name, track).unwrap(),
-                        Event::Start(track) => handle.emit_all(event_name, track).unwrap(),
-                        Event::Finish(track) => handle.emit_all(event_name, track).unwrap(),
+                        Event::Waiting(id) => handle.emit_all(event_name, id).unwrap(),
+                        Event::Start(id) => handle.emit_all(event_name, id).unwrap(),
+                        Event::Finish(id) => handle.emit_all(event_name, id).unwrap(),
                         Event::DownloadError(track, err_msg) => {
                             handle.emit_all(event_name, (track, err_msg)).unwrap()
+                        }
+                        Event::AlbumTrackComplete(id, index) => {
+                            handle.emit_all(event_name, (id, index)).unwrap()
+                        }
+                        Event::AlbumTrackError(id, index, err_msg) => {
+                            handle.emit_all(event_name, (id, index, err_msg)).unwrap()
                         }
                     }
                 }

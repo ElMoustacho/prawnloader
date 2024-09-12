@@ -13,6 +13,8 @@ pub enum Event {
     Start(#[ts(type = "string")] Uuid),
     Finish(#[ts(type = "string")] Uuid),
     DownloadError(#[ts(type = "string")] Uuid, String),
+    AlbumTrackComplete(#[ts(type = "string")] Uuid, usize),
+    AlbumTrackError(#[ts(type = "string")] Uuid, usize, String),
 }
 
 impl From<ProgressEvent> for Event {
@@ -22,6 +24,10 @@ impl From<ProgressEvent> for Event {
             ProgressEvent::Start(id) => Self::Start(id),
             ProgressEvent::Finish(id) => Self::Finish(id),
             ProgressEvent::DownloadError(id, err_msg) => Self::DownloadError(id, err_msg),
+            ProgressEvent::AlbumTrackComplete(id, index) => Self::AlbumTrackComplete(id, index),
+            ProgressEvent::AlbumTrackError(id, index, err_msg) => {
+                Self::AlbumTrackError(id, index, err_msg)
+            }
         }
     }
 }
