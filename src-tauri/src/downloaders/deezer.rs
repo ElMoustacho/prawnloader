@@ -20,6 +20,8 @@ use super::{replace_illegal_characters, DeezerId, DownloadRequest, ProgressEvent
 
 static DOWNLOAD_THREADS: u64 = 4;
 
+// DEBUG: Disable warning beacause Config is not yet used for deezer
+#[allow(dead_code)]
 struct DeezerRequest(DownloadRequest, Config);
 
 #[derive(Debug)]
@@ -39,21 +41,18 @@ impl Downloader {
             tokio::spawn(async move {
                 let downloader = DeezerDownloader::new().await.unwrap();
                 while let Ok(DeezerRequest(request, ..)) = _download_rx.recv() {
+                    let request_id = request.request_id;
                     let result = match request.item {
-                        Item::DeezerAlbum {
-                            album,
-                            merge_tracks,
-                        } => download_album(album, merge_tracks, &downloader, &_progress_tx).await,
-                        Item::DeezerTrack { track } => {
-                            download_song(track, &downloader, &_progress_tx).await
+                        Item::DeezerAlbum { .. } => {
+                            download_album(request, &downloader, &_progress_tx).await
                         }
+                        Item::DeezerTrack { .. } => download_song(request, &downloader).await,
                         _ => continue,
                     };
 
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(request.request_id),
-                        // FIXME: Add download error String
-                        Err(_) => ProgressEvent::DownloadError(request.request_id, String::new()),
+                        Ok(_) => ProgressEvent::Finish(request_id),
+                        Err(err) => ProgressEvent::DownloadError(request_id, err.to_string()),
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -114,13 +113,15 @@ impl Downloader {
     }
 }
 
-async fn download_song(
-    song: Song,
-    downloader: &DeezerDownloader,
-    progress_tx: &Sender<ProgressEvent>,
-) -> Result<()> {
+async fn download_song(request: DownloadRequest, downloader: &DeezerDownloader) -> Result<()> {
+    let DownloadRequest { item, .. } = request;
+    let Item::DeezerTrack { track } = item else {
+        panic!("Item should be DeezerTrack.");
+    };
+
     let maybe_song =
-        deezer_downloader::Song::download_from_metadata(metadata_from_song(song), downloader).await;
+        deezer_downloader::Song::download_from_metadata(metadata_from_song(track), downloader)
+            .await;
     let song = match maybe_song {
         Ok(it) => it,
         Err(_) => return Err(eyre!("Song not found.")),
@@ -128,19 +129,23 @@ async fn download_song(
 
     write_song_to_file(&song)?;
 
-    let _ = progress_tx.send(ProgressEvent::Finish(todo!(
-        "Handle UUID for individual songs."
-    )));
-
     Ok(())
 }
 
 async fn download_album(
-    album: Album,
-    merge_tracks: bool,
+    request: DownloadRequest,
     downloader: &DeezerDownloader,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
+    let DownloadRequest { request_id, item } = request;
+    let Item::DeezerAlbum {
+        album,
+        merge_tracks,
+    } = item
+    else {
+        panic!("Item should be DeezerAlbum.");
+    };
+
     let download_dir = download_dir().ok_or(eyre!("Cannot find download directory."))?;
     let maybe_songs: Vec<_> = album
         .songs
@@ -191,24 +196,19 @@ async fn download_album(
         drop(ffmpeg_stdin);
         ffmpeg_process.wait().await?;
 
-        progress_tx.send(ProgressEvent::Finish(todo!(
-            "Handle UUID for individual songs."
-        )));
-
         Ok(())
     } else {
-        for maybe_song in maybe_songs {
+        for (i, maybe_song) in maybe_songs.into_iter().enumerate() {
             let result: Result<()> = match maybe_song {
                 Ok(song) => write_song_to_file(&song),
                 Err(err) => Err(eyre!(err)),
             };
 
             let _ = match result {
-                Ok(_) => progress_tx.send(ProgressEvent::Finish(todo!(
-                    "Handle UUID for individual songs."
-                ))),
-                Err(err) => progress_tx.send(ProgressEvent::DownloadError(
-                    todo!("Handle UUID for individual songs."),
+                Ok(_) => progress_tx.send(ProgressEvent::AlbumTrackComplete(request_id, i)),
+                Err(err) => progress_tx.send(ProgressEvent::AlbumTrackError(
+                    request_id,
+                    i,
                     err.to_string(),
                 )),
             };
