@@ -13,7 +13,6 @@ pub enum Event {
     Start(#[ts(type = "string")] Uuid),
     Finish(#[ts(type = "string")] Uuid),
     DownloadError(#[ts(type = "string")] Uuid, String),
-    RemoveFromQueue(#[ts(type = "string")] Uuid),
 }
 
 impl From<ProgressEvent> for Event {

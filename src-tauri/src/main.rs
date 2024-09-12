@@ -136,9 +136,6 @@ async fn main() {
                         Event::DownloadError(track, err_msg) => {
                             handle.emit_all(event_name, (track, err_msg)).unwrap()
                         }
-                        Event::RemoveFromQueue(track) => {
-                            handle.emit_all(event_name, track).unwrap()
-                        }
                     }
                 }
             });
