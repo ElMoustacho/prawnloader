@@ -40,17 +40,9 @@ impl Downloader {
                         Item::DeezerAlbum {
                             album,
                             merge_tracks,
-                        } => {
-                            _progress_tx
-                                .send(ProgressEvent::Start(request.request_id))
-                                .unwrap();
-                            download_album(album, merge_tracks, &downloader).await
-                        }
+                        } => download_album(album, merge_tracks, &downloader, &_progress_tx).await,
                         Item::DeezerTrack { track } => {
-                            _progress_tx
-                                .send(ProgressEvent::Start(request.request_id))
-                                .unwrap();
-                            download_song(track, &downloader).await
+                            download_song(track, &downloader, &_progress_tx).await
                         }
                         _ => continue,
                     };
@@ -119,7 +111,11 @@ impl Downloader {
     }
 }
 
-async fn download_song(song: Song, downloader: &DeezerDownloader) -> Result<()> {
+async fn download_song(
+    song: Song,
+    downloader: &DeezerDownloader,
+    progress_tx: &Sender<ProgressEvent>,
+) -> Result<()> {
     let maybe_song =
         deezer_downloader::Song::download_from_metadata(metadata_from_song(song), downloader).await;
     let song = match maybe_song {
@@ -128,6 +124,8 @@ async fn download_song(song: Song, downloader: &DeezerDownloader) -> Result<()> 
     };
 
     write_song_to_file(&song)?;
+
+    let _ = progress_tx.send(ProgressEvent::Finish());
 
     Ok(())
 }
