@@ -5,26 +5,31 @@
 
 	export let queueItem: QueueItem;
 
-	$: downloading = queueItem.download_state === 'Downloading';
+	if (queueItem.item.type !== 'DeezerTrack')
+		throw new Error('Item should be of type DeezerAlbum.');
+
+	let track = queueItem.item.track;
+
+	$: downloading = queueItem.download_status === 'Downloading';
 </script>
 
 <div class="list-item p-2">
 	<div class="list-item-image">
 		<figure class="image is-32x32">
-			<img src={queueItem.song.album.cover_url} alt="" />
+			<img src={track.album.cover_url} alt="" />
 		</figure>
 	</div>
 
 	<div class="list-item-content">
-		<div class="list-item-title" title={queueItem.song.title}>
-			<span>[<b>{queueItem.download_state}</b>]</span>
-			<span>{queueItem.song.title}</span>
+		<div class="list-item-title" title={track.title}>
+			<span>[<b>{queueItem.download_status}</b>]</span>
+			<span>{track.title}</span>
 		</div>
 		<div class="list-item-description">
 			<div class="is-flex is-justify-content-space-between">
-				<span title={queueItem.song.album.title}>{queueItem.song.album.title}</span>
-				<span title={queueItem.song.artist} class="is-single-line has-text-black-bis"
-					>{queueItem.song.artist}</span>
+				<span title={track.album.title}>{track.album.title}</span>
+				<span title={track.artist} class="is-single-line has-text-black-bis"
+					>{track.artist}</span>
 			</div>
 		</div>
 	</div>
@@ -33,7 +38,7 @@
 		<div class="buttons is-right">
 			<button
 				class="button"
-				on:click={() => invoke('request_download', { song: queueItem.song })}
+				on:click={() => invoke('request_download', { request: queueItem })}
 				disabled={downloading}>
 				<span class="icon is-small">
 					<i class="fas fa-download" />
@@ -42,7 +47,7 @@
 			<button
 				class="button is-danger"
 				on:click={() =>
-					queue.update(queue => queue.filter(x => x.song.id !== queueItem.song.id))}
+					queue.update(queue => queue.filter(x => x.request_id === queueItem.request_id))}
 				disabled={downloading}>
 				<span class="icon is-small">
 					<i class="fas fa-trash" />

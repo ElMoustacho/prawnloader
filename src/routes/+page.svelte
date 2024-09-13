@@ -1,17 +1,35 @@
 <script lang="ts" context="module">
+	import DeezerAlbum from '$lib/components/queue_items/DeezerAlbum.svelte';
+	import DeezerTrack from '$lib/components/queue_items/DeezerTrack.svelte';
+	import YoutubePlaylist from '$lib/components/queue_items/YoutubePlaylist.svelte';
+	import YoutubeVideo from '$lib/components/queue_items/YoutubeVideo.svelte';
+	import type { QueueItem } from '$lib/music';
+	import type { ComponentType } from 'svelte';
 	import { writable } from 'svelte/store';
 
 	let urls = writable('');
+
+	const components: Map<
+		Item['type'],
+		ComponentType<SvelteComponent<{ queueItem: QueueItem }>>
+	> = new Map();
+	components
+		.set('DeezerAlbum', DeezerAlbum)
+		.set('DeezerTrack', DeezerTrack)
+		.set('YoutubePlaylist', YoutubePlaylist)
+		.set('YoutubeVideo', YoutubeVideo);
 </script>
 
 <script lang="ts">
 	import LogsList from '$lib/components/LogsList.svelte';
-	import QueueSong from '$lib/components/QueueSong.svelte';
 	import { Log, addLog, clearLogs, logs } from '$lib/log';
 	import { queue } from '$lib/stores';
 	import { invoke } from '$lib/tauri-wrapper';
+	import type { Item } from '$models/Item';
 	import { confirm } from '@tauri-apps/api/dialog';
+	import type { SvelteComponent } from 'svelte';
 	import { onDestroy, onMount } from 'svelte';
+	import { v4 as uuidv4 } from 'uuid';
 
 	function addToQueue() {
 		if ($urls.length <= 0) return;
@@ -19,16 +37,14 @@
 			.trim()
 			.split('\n')
 			.forEach(url =>
-				invoke('get_songs', { url }).then(
-					songs => {
-						for (let song of songs) {
-							$queue.push({
-								download_state: 'Inactive',
-								song,
-							});
-
-							$queue = $queue;
-						}
+				invoke('get_item', { url }).then(
+					item => {
+						$queue.push({
+							item,
+							request_id: uuidv4(),
+							download_status: 'Inactive',
+						});
+						$queue = $queue;
 					},
 					reason => addLog(new Log(false, reason)),
 				),
@@ -38,11 +54,8 @@
 
 	function downloadQueue() {
 		$queue.forEach(queueItem => {
-			if (queueItem.download_state === 'Downloading') return;
-
-			invoke('request_download', {
-				song: queueItem.song,
-			});
+			if (queueItem.download_status === 'Downloading') return;
+			invoke('request_download', { request: queueItem });
 		});
 	}
 
@@ -126,8 +139,8 @@
 			<legend class="subtitle m-0 is-unselectable">Queue</legend>
 			{#if $queue.length > 0}
 				<div class="list max-overflow">
-					{#each $queue as queueSong}
-						<QueueSong {queueSong} />
+					{#each $queue as queueItem}
+						<svelte:component this={components.get(queueItem.item.type)} {queueItem} />
 					{/each}
 				</div>
 			{:else}
