@@ -46,7 +46,9 @@ impl Downloader {
                         Item::DeezerAlbum { .. } => {
                             download_album(request, &downloader, &_progress_tx).await
                         }
-                        Item::DeezerTrack { .. } => download_song(request, &downloader).await,
+                        Item::DeezerTrack { .. } => {
+                            download_song(request, &downloader, &_progress_tx).await
+                        }
                         _ => continue,
                     };
 
@@ -113,11 +115,17 @@ impl Downloader {
     }
 }
 
-async fn download_song(request: DownloadRequest, downloader: &DeezerDownloader) -> Result<()> {
-    let DownloadRequest { item, .. } = request;
+async fn download_song(
+    request: DownloadRequest,
+    downloader: &DeezerDownloader,
+    progress_tx: &Sender<ProgressEvent>,
+) -> Result<()> {
+    let DownloadRequest { item, request_id } = request;
     let Item::DeezerTrack { track } = item else {
         panic!("Item should be DeezerTrack.");
     };
+
+    let _ = progress_tx.send(ProgressEvent::Start(request_id));
 
     let maybe_song =
         deezer_downloader::Song::download_from_metadata(metadata_from_song(track), downloader)
@@ -145,6 +153,8 @@ async fn download_album(
     else {
         panic!("Item should be DeezerAlbum.");
     };
+
+    let _ = progress_tx.send(ProgressEvent::Start(request_id));
 
     let download_dir = download_dir().ok_or(eyre!("Cannot find download directory."))?;
     let maybe_songs: Vec<_> = album
