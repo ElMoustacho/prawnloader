@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/log';
 	import { queue } from '$lib/stores';
 	import { listen } from '$lib/tauri-wrapper';
 	import { onMount } from 'svelte';
@@ -16,32 +15,40 @@
 	onMount(() => {
 		// Download related event listeners
 		listen('start', e => {
-			const song = e.payload;
+			const id = e.payload;
 			const firstSongIndex = $queue.findIndex(
-				queueSong =>
-					queueSong.song.id === song.id && queueSong.download_state === 'Inactive',
+				queueItem =>
+					queueItem.request_id === id && queueItem.download_status === 'Inactive',
 			);
 
 			if (firstSongIndex < 0) return;
 
-			$queue[firstSongIndex].download_state = 'Downloading';
+			$queue[firstSongIndex].download_status = 'Downloading';
+			console.info(
+				$queue[firstSongIndex],
+				firstSongIndex,
+				$queue[firstSongIndex].download_status,
+			);
 		});
 
 		listen('finish', e => {
-			const song = e.payload;
-			const firstSongIndex = $queue.findIndex(queueSong => queueSong.song.id === song.id);
+			const id = e.payload;
+			const firstSongIndex = $queue.findIndex(queueItem => queueItem.request_id === id);
 
 			if (firstSongIndex < 0) return;
 
 			$queue.splice(firstSongIndex, 1);
 			$queue = $queue;
 
-			addLog(formatLogSuccess(song));
+			// FIXME: Re-enable logs
+			// addLog(formatLogSuccess(song));
 		});
 
 		// Error related event listeners
 		listen('download_error', e => {
-			addLog(formatLogDownloadError(...e.payload));
+			// TODO: Remove item or re-enable download on error
+			// FIXME: Re-enable logs
+			// addLog(formatLogDownloadError(...e.payload));
 		});
 
 		document.addEventListener('keydown', ctrlTabListener);
