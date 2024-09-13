@@ -1,8 +1,5 @@
-import type { Song } from '$models/Song';
+import type { Item } from '$models/Item';
 
-type DownloadStatus = 'Downloading' | 'Inactive';
+export type DownloadStatus = 'Downloading' | 'Inactive';
 
-export interface QueueSong {
-	song: Song;
-	download_state: DownloadStatus;
-}
+export type QueueItem = { request_id: string; item: Item; download_status: DownloadStatus };
