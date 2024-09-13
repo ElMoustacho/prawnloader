@@ -22,8 +22,7 @@ pub enum ProgressEvent {
 }
 
 #[derive(TS, Serialize, Deserialize)]
-#[serde(rename = "QueueItem")]
-#[ts(export)]
+#[ts(export, export_to = "parameters/")]
 pub struct DownloadRequest {
     #[ts(type = "string")]
     pub request_id: Uuid,
