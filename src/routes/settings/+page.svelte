@@ -59,27 +59,11 @@
 </script>
 
 {#if $tempConfig !== undefined}
-	<main>
+	<main class="is-unselectable">
 		<section class="box">
 			<h1 class="subtitle has-background-white"><i class="fa-solid fa-gear"></i> General</h1>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Placeholder</label>
-				<input type="text" class="input is-small" placeholder="Placeholder" />
-				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-			</div>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Placeholder</label>
-				<input type="text" class="input is-small" placeholder="Placeholder" />
-				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-			</div>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Placeholder</label>
-				<input type="text" class="input is-small" placeholder="Placeholder" />
-				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-			</div>
+
+			<h2 class="subtitle has-text-grey-light">No settings</h2>
 		</section>
 
 		<section class="box">
@@ -103,38 +87,6 @@
 					</div>
 				</div>
 			</div>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Music format</label>
-				<div class="control has-icons-left">
-					<div class="select is-primary is-small">
-						<select bind:value={$tempConfig.youtubeFormat}>
-							{#each youtubeFormats as youtubeFormat}
-								<option value={youtubeFormat}>{youtubeFormat}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="icon is-small is-left">
-						<i class="fa-solid fa-file-audio"></i>
-					</div>
-				</div>
-			</div>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Music format</label>
-				<div class="control has-icons-left">
-					<div class="select is-primary is-small">
-						<select bind:value={$tempConfig.youtubeFormat}>
-							{#each youtubeFormats as youtubeFormat}
-								<option value={youtubeFormat}>{youtubeFormat}</option>
-							{/each}
-						</select>
-					</div>
-					<div class="icon is-small is-left">
-						<i class="fa-solid fa-file-audio"></i>
-					</div>
-				</div>
-			</div>
 		</section>
 
 		<section class="box">
@@ -142,24 +94,7 @@
 				<i class="fa-brands fa-youtube"></i> Deezer
 			</h1>
 
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Placeholder</label>
-				<input type="text" class="input is-small" placeholder="Placeholder" />
-				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-			</div>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Placeholder</label>
-				<input type="text" class="input is-small" placeholder="Placeholder" />
-				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-			</div>
-			<div class="field">
-				<!-- svelte-ignore a11y-label-has-associated-control -->
-				<label class="label">Placeholder</label>
-				<input type="text" class="input is-small" placeholder="Placeholder" />
-				<p class="help">Lorem ipsum dolor sit amet consectetur adipisicing elit.</p>
-			</div>
+			<h2 class="subtitle has-text-grey-light">No settings</h2>
 		</section>
 
 		<section class="box settings-buttons">
