@@ -114,7 +114,19 @@
 				<i class="fa-brands fa-deezer"></i> Deezer
 			</h1>
 
-			<h2 class="subtitle has-text-grey-light">No settings</h2>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Albums</label>
+				<div class="control">
+					<label>
+						<input
+							class="checkbox is-primary is-small"
+							type="checkbox"
+							bind:checked={$tempConfig.deezerMergeTracks} />
+						Merge album tracks as single file
+					</label>
+				</div>
+			</div>
 		</section>
 
 		<section class="box settings-buttons">
