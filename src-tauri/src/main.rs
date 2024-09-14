@@ -36,6 +36,13 @@ async fn get_item(
     let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
+
+    let Config {
+        deezer_merge_tracks: merge_tracks,
+        youtube_split_chapters,
+        ..
+    } = config_state.lock().unwrap().config;
+
     let item: Item = match parsed_id {
         ParsedId::DeezerAlbum(id) => Item::DeezerAlbum {
             album: state
@@ -43,7 +50,7 @@ async fn get_item(
                 .get_album(id)
                 .await
                 .ok_or(format!("Invalid album id {id}"))?,
-            merge_tracks: false,
+            merge_tracks,
         },
         ParsedId::DeezerTrack(id) => Item::DeezerTrack {
             track: state
@@ -59,7 +66,7 @@ async fn get_item(
                 .await
                 .ok_or(format!("Invalid video id"))?;
             let split_by_chapters = if has_chapters {
-                Some(config_state.lock().unwrap().config.youtube_split_chapters)
+                Some(youtube_split_chapters)
             } else {
                 None
             };
