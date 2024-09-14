@@ -210,7 +210,10 @@ async fn download_album(
     } else {
         for (i, maybe_song) in maybe_songs.into_iter().enumerate() {
             let result: Result<()> = match maybe_song {
-                Ok(song) => write_song_to_file(&song),
+                Ok(mut song) => {
+                    song.tag.set_track(i as u32 + 1);
+                    write_song_to_file(&song)
+                }
                 Err(err) => Err(eyre!(err)),
             };
 
