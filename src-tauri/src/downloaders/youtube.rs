@@ -46,7 +46,12 @@ impl Downloader {
                             _progress_tx
                                 .send(ProgressEvent::Start(request.request_id))
                                 .unwrap();
-                            download_song(video, split_by_chapters, &youtube_format).await
+                            download_song(
+                                video,
+                                split_by_chapters.unwrap_or_default(),
+                                &youtube_format,
+                            )
+                            .await
                         }
                         Item::YoutubePlaylist { playlist } => {
                             _progress_tx
@@ -77,11 +82,12 @@ impl Downloader {
             .expect("Channel should be open");
     }
 
-    pub async fn get_song(&self, id: YoutubeId) -> Option<Song> {
+    pub async fn get_song(&self, id: YoutubeId) -> Option<(Song, bool)> {
         let video = Video::new(id.to_string()).ok()?;
         let video_details = video.get_basic_info().await.ok()?.video_details;
+        let empty = !video_details.chapters.is_empty();
 
-        Some(video_details.into())
+        Some((video_details.into(), empty))
     }
 
     pub async fn get_playlist(&self, id: YoutubePlaylistId) -> Option<Album> {
@@ -127,6 +133,7 @@ async fn download_album(playlist: Album, format: &YoutubeFormat) -> Result<()> {
     Err(eyre!("Not implemented"))
 }
 
+// TODO: Use ffmpeg stream to split song
 async fn split_video_by_chapters(
     video_details: VideoDetails,
     file_format: String,

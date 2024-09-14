@@ -28,7 +28,8 @@ pub enum Item {
     #[serde(rename_all = "camelCase")]
     YoutubeVideo {
         video: Song,
-        split_by_chapters: bool,
+        // If the video has chapters, will be Some(bool), otherwise None
+        split_by_chapters: Option<bool>,
     },
     #[serde(rename_all = "camelCase")]
     YoutubePlaylist { playlist: Album },

@@ -48,14 +48,22 @@ async fn get_item(url: String, state: State<'_, DownloadersState>) -> Result<Ite
                 .await
                 .ok_or(format!("Invalid track id {id}"))?,
         },
-        ParsedId::YoutubeVideo(id) => Item::YoutubeVideo {
-            video: state
+        ParsedId::YoutubeVideo(id) => {
+            let (video, has_chapters) = state
                 .youtube_downloader
                 .get_song(id)
                 .await
-                .ok_or(format!("Invalid video id"))?,
-            split_by_chapters: false,
-        },
+                .ok_or(format!("Invalid video id"))?;
+            Item::YoutubeVideo {
+                video,
+                // TODO: Add config for default param
+                split_by_chapters: if has_chapters {
+                    Some(Default::default())
+                } else {
+                    None
+                },
+            }
+        }
         ParsedId::YoutubePlaylist(id) => Item::YoutubePlaylist {
             playlist: state
                 .youtube_downloader
