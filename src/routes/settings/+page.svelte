@@ -96,7 +96,7 @@
 						<input
 							class="checkbox is-primary is-small"
 							type="checkbox"
-							bind:checked={$tempConfig.splitByChaptersDefault} />
+							bind:checked={$tempConfig.youtubeSplitChapters} />
 						Split videos with chapters
 						<p class="help">
 							All videos will be split into multiple files by default, using the

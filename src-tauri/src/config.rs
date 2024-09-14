@@ -17,7 +17,10 @@ pub enum YoutubeFormat {
 #[serde(rename_all = "camelCase")]
 #[ts(export)]
 pub struct Config {
+    // Deezer
+    pub deezer_merge_tracks: bool,
+    // Youtube
     #[ts(inline)]
     pub youtube_format: YoutubeFormat,
-    pub split_by_chapters_default: bool,
+    pub youtube_split_chapters: bool,
 }

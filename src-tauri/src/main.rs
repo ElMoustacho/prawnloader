@@ -59,13 +59,7 @@ async fn get_item(
                 .await
                 .ok_or(format!("Invalid video id"))?;
             let split_by_chapters = if has_chapters {
-                Some(
-                    config_state
-                        .lock()
-                        .unwrap()
-                        .config
-                        .split_by_chapters_default,
-                )
+                Some(config_state.lock().unwrap().config.youtube_split_chapters)
             } else {
                 None
             };
