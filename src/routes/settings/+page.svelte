@@ -68,7 +68,7 @@
 
 		<section class="box">
 			<h1 class="subtitle has-background-white">
-				<i class="fa-brands fa-deezer"></i> Youtube
+				<i class="fa-brands fa-youtube"></i> Youtube
 			</h1>
 
 			<div class="field">
@@ -111,7 +111,7 @@
 
 		<section class="box">
 			<h1 class="subtitle has-background-white">
-				<i class="fa-brands fa-youtube"></i> Deezer
+				<i class="fa-brands fa-deezer"></i> Deezer
 			</h1>
 
 			<h2 class="subtitle has-text-grey-light">No settings</h2>
