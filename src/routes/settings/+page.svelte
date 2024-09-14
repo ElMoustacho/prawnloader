@@ -87,6 +87,26 @@
 					</div>
 				</div>
 			</div>
+
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Split by chapters</label>
+				<div class="control">
+					<label>
+						<input
+							class="checkbox is-primary is-small"
+							type="checkbox"
+							bind:checked={$tempConfig.splitByChaptersDefault} />
+						Split videos with chapters
+						<p class="help">
+							All videos will be split into multiple files by default, using the
+							chapters in the video description (if available).
+							<br />
+							Can be changed for each download manually.
+						</p>
+					</label>
+				</div>
+			</div>
 		</section>
 
 		<section class="box">

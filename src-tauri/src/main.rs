@@ -28,7 +28,11 @@ struct ConfigState {
 }
 
 #[tauri::command]
-async fn get_item(url: String, state: State<'_, DownloadersState>) -> Result<Item, String> {
+async fn get_item(
+    url: String,
+    state: State<'_, DownloadersState>,
+    config_state: State<'_, Mutex<ConfigState>>,
+) -> Result<Item, String> {
     let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
@@ -54,14 +58,21 @@ async fn get_item(url: String, state: State<'_, DownloadersState>) -> Result<Ite
                 .get_song(id)
                 .await
                 .ok_or(format!("Invalid video id"))?;
+            let split_by_chapters = if has_chapters {
+                Some(
+                    config_state
+                        .lock()
+                        .unwrap()
+                        .config
+                        .split_by_chapters_default,
+                )
+            } else {
+                None
+            };
+
             Item::YoutubeVideo {
                 video,
-                // TODO: Add config for default param
-                split_by_chapters: if has_chapters {
-                    Some(Default::default())
-                } else {
-                    None
-                },
+                split_by_chapters,
             }
         }
         ParsedId::YoutubePlaylist(id) => Item::YoutubePlaylist {

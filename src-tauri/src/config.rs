@@ -19,4 +19,5 @@ pub enum YoutubeFormat {
 pub struct Config {
     #[ts(inline)]
     pub youtube_format: YoutubeFormat,
+    pub split_by_chapters_default: bool,
 }
