@@ -24,11 +24,6 @@
 			if (firstSongIndex < 0) return;
 
 			$queue[firstSongIndex].download_status = 'Downloading';
-			console.info(
-				$queue[firstSongIndex],
-				firstSongIndex,
-				$queue[firstSongIndex].download_status,
-			);
 		});
 
 		listen('finish', e => {
