@@ -1,13 +1,19 @@
-use std::{fs::DirBuilder, path::Path};
+use std::{
+    fs::DirBuilder,
+    path::{Path, PathBuf},
+    process::Stdio,
+};
 
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
 use futures::future::join_all;
+use once_cell::sync::Lazy;
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
     FFmpegArgs, Video, VideoDetails,
 };
 use tauri::api::path::download_dir;
+use tempfile::TempDir;
 use tokio::process::Command;
 
 use crate::{
@@ -20,6 +26,9 @@ use super::{
 };
 
 static DOWNLOAD_THREADS: u64 = 4;
+
+// DEBUG: Temporrary folder before adding it to the config
+static DOWNLOAD_FOLDER: Lazy<PathBuf> = Lazy::new(|| download_dir().unwrap());
 
 struct YoutubeRequest(DownloadRequest, Config);
 
@@ -114,17 +123,47 @@ async fn download_song(
     let video = Video::new(song.id.clone())?;
 
     // TODO: Allow the target directory to be given.
-    let title = format_title(&song.title, &file_format);
-    let video_path = download_dir().unwrap().join(title);
+    let file_name = format_filename(&song.title, &file_format);
+
     let args = FFmpegArgs {
-        format: Some(file_format),
+        format: Some(file_format.clone()),
         audio_filter: None,
         video_filter: None,
     };
-
     progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
-    DirBuilder::new().recursive(true).create(&video_path)?;
-    video.download_with_ffmpeg(video_path, Some(args)).await?;
+    if let Some(true) = split_by_chapters {
+        let video_details = video.get_info().await?.video_details;
+
+        let temp_dir = TempDir::new()?;
+        let temp_dir_path = temp_dir.path();
+
+        let temp_vid_filename = "temp";
+        let temp_vid_path = temp_dir_path.join(temp_vid_filename);
+
+        let dest_folder_path = DOWNLOAD_FOLDER.join(replace_illegal_characters(&song.title));
+
+        video
+            .download_with_ffmpeg(&temp_vid_path, Some(args))
+            .await?;
+        DirBuilder::new()
+            .recursive(true)
+            .create(&dest_folder_path)?;
+        split_video_by_chapters(
+            video_details,
+            file_format,
+            &temp_vid_path,
+            &dest_folder_path,
+        )
+        .await;
+
+        drop(temp_dir);
+    } else {
+        let video_path = DOWNLOAD_FOLDER.join(file_name);
+        DirBuilder::new()
+            .recursive(true)
+            .create(DOWNLOAD_FOLDER.clone())?;
+        video.download_with_ffmpeg(video_path, Some(args)).await?;
+    }
 
     Ok(())
 }
@@ -138,16 +177,15 @@ async fn download_playlist(
         unreachable!("Item should be YoutubePlaylist.");
     };
 
-    let download_dir = download_dir().ok_or(eyre!("Cannot find download directory."))?;
     let futures: Vec<_> = playlist
         .songs
         .into_iter()
         .map(|song| {
             let download_dir =
-                download_dir.join(replace_illegal_characters(&playlist.title.clone()));
+                DOWNLOAD_FOLDER.join(replace_illegal_characters(&playlist.title.clone()));
             async move {
                 let file_format = format.to_string();
-                let file_name = format_title(&song.title, &file_format);
+                let file_name = format_filename(&song.title, &file_format);
                 let file_path = download_dir.join(file_name);
                 let args = FFmpegArgs {
                     format: Some(file_format),
@@ -189,11 +227,12 @@ async fn download_playlist(
 async fn split_video_by_chapters(
     video_details: VideoDetails,
     file_format: String,
-    video_path: &Path,
+    video_source_path: &Path,
+    dest_folder_path: &Path,
 ) {
     for (index, chapter) in video_details.chapters.iter().enumerate() {
-        let output_filename = format_title(&chapter.title, &file_format);
-        let output_path = download_dir().unwrap().join(output_filename);
+        let output_filename = format_filename(&chapter.title, &file_format);
+        let output_path = dest_folder_path.join(output_filename);
         let start = chapter.start_time.to_string();
         let end;
         if index != video_details.chapters.len() - 1 {
@@ -209,7 +248,7 @@ async fn split_video_by_chapters(
 
         let args = vec![
             "-i",
-            video_path.to_str().unwrap(),
+            video_source_path.to_str().unwrap(),
             "-ss",
             &start,
             "-to",
@@ -220,6 +259,9 @@ async fn split_video_by_chapters(
         ];
         Command::new("ffmpeg")
             .args(args)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .kill_on_drop(true)
             .spawn()
             .unwrap()
             .wait()
@@ -228,6 +270,6 @@ async fn split_video_by_chapters(
     }
 }
 
-fn format_title(title: &str, extension: &str) -> String {
+fn format_filename(title: &str, extension: &str) -> String {
     format!("{}.{}", replace_illegal_characters(&title), extension)
 }
