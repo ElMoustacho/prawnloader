@@ -1,7 +1,8 @@
-use std::path::Path;
+use std::{fs::DirBuilder, path::Path};
 
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
+use futures::future::join_all;
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
     FFmpegArgs, Video, VideoDetails,
@@ -122,13 +123,66 @@ async fn download_song(
     };
 
     progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
+    DirBuilder::new().recursive(true).create(&video_path)?;
     video.download_with_ffmpeg(video_path, Some(args)).await?;
 
     Ok(())
 }
 
-async fn download_album(playlist: Album, format: &YoutubeFormat) -> Result<()> {
-    Err(eyre!("Not implemented"))
+async fn download_playlist(
+    DownloadRequest { request_id, item }: DownloadRequest,
+    format: &YoutubeFormat,
+    progress_tx: &Sender<ProgressEvent>,
+) -> Result<()> {
+    let Item::YoutubePlaylist { playlist } = item else {
+        unreachable!("Item should be YoutubePlaylist.");
+    };
+
+    let download_dir = download_dir().ok_or(eyre!("Cannot find download directory."))?;
+    let futures: Vec<_> = playlist
+        .songs
+        .into_iter()
+        .map(|song| {
+            let download_dir =
+                download_dir.join(replace_illegal_characters(&playlist.title.clone()));
+            async move {
+                let file_format = format.to_string();
+                let file_name = format_title(&song.title, &file_format);
+                let file_path = download_dir.join(file_name);
+                let args = FFmpegArgs {
+                    format: Some(file_format),
+                    audio_filter: None,
+                    video_filter: None,
+                };
+
+                if let Ok(video) = Video::new(song.id.clone()) {
+                    DirBuilder::new().recursive(true).create(download_dir)?;
+                    video.download_with_ffmpeg(file_path, Some(args)).await?;
+
+                    return Ok(());
+                };
+
+                Err(eyre!("Error while downloading video with id {}", song.id))
+            }
+        })
+        .collect();
+
+    let maybe_songs = join_all(futures).await;
+
+    for (i, maybe_song) in maybe_songs.into_iter().enumerate() {
+        let _ = match maybe_song {
+            Ok(_) => progress_tx.send(ProgressEvent::AlbumTrackComplete(request_id, i)),
+            Err(err) => progress_tx.send(ProgressEvent::AlbumTrackError(
+                request_id,
+                i,
+                err.to_string(),
+            )),
+        };
+    }
+
+    progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
+
+    Ok(())
 }
 
 // TODO: Use ffmpeg stream to split song
