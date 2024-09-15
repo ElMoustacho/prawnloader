@@ -193,6 +193,7 @@ async fn download_album(
             .current_dir(download_dir)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .kill_on_drop(true)
             .spawn()
             .unwrap();
