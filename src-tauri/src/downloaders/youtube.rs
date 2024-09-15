@@ -35,37 +35,21 @@ impl Downloader {
             let _progress_tx = progress_tx.clone();
 
             tokio::spawn(async move {
-                while let Ok(YoutubeRequest(request, Config { youtube_format, .. })) =
-                    _download_rx.recv()
-                {
+                while let Ok(YoutubeRequest(request, config)) = _download_rx.recv() {
+                    let request_id = request.request_id;
                     let result = match request.item {
-                        Item::YoutubeVideo {
-                            video,
-                            split_by_chapters,
-                        } => {
-                            _progress_tx
-                                .send(ProgressEvent::Start(request.request_id))
-                                .unwrap();
-                            download_song(
-                                video,
-                                split_by_chapters.unwrap_or_default(),
-                                &youtube_format,
-                            )
-                            .await
+                        Item::YoutubeVideo { .. } => {
+                            download_song(request, &config.youtube_format, &_progress_tx).await
                         }
-                        Item::YoutubePlaylist { playlist } => {
-                            _progress_tx
-                                .send(ProgressEvent::Start(request.request_id))
-                                .unwrap();
-                            download_album(playlist, &youtube_format).await
+                        Item::YoutubePlaylist { .. } => {
+                            download_playlist(request, &config.youtube_format, &_progress_tx).await
                         }
+
                         _ => continue,
                     };
                     let progress = match result {
-                        Ok(_) => ProgressEvent::Finish(request.request_id),
-                        Err(err) => {
-                            ProgressEvent::DownloadError(request.request_id, err.to_string())
-                        }
+                        Ok(_) => ProgressEvent::Finish(request_id),
+                        Err(err) => ProgressEvent::DownloadError(request_id, err.to_string()),
                     };
 
                     _progress_tx.send(progress).unwrap();
@@ -112,7 +96,19 @@ impl Downloader {
     }
 }
 
-async fn download_song(song: Song, split_by_chapters: bool, format: &YoutubeFormat) -> Result<()> {
+async fn download_song(
+    DownloadRequest { request_id, item }: DownloadRequest,
+    format: &YoutubeFormat,
+    progress_tx: &Sender<ProgressEvent>,
+) -> Result<()> {
+    let Item::YoutubeVideo {
+        video: song,
+        split_by_chapters,
+    } = item
+    else {
+        unreachable!("Item should be YoutubeVideo.");
+    };
+
     let file_format: String = format.to_string();
     let video = Video::new(song.id.clone())?;
 
@@ -124,6 +120,8 @@ async fn download_song(song: Song, split_by_chapters: bool, format: &YoutubeForm
         audio_filter: None,
         video_filter: None,
     };
+
+    progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
     video.download_with_ffmpeg(video_path, Some(args)).await?;
 
     Ok(())
