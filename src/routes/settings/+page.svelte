@@ -7,6 +7,8 @@
 	import type { UnionToTuple } from 'src/union-to-tuple';
 	import { onDestroy, onMount } from 'svelte';
 	import { writable } from 'svelte/store';
+	import { open } from '@tauri-apps/api/dialog';
+	import { path } from '@tauri-apps/api';
 
 	let config: ConfigStore;
 
@@ -56,6 +58,17 @@
 	function cancelChanges() {
 		tempConfig.set(structuredClone($config));
 	}
+
+	async function selectFolder() {
+		const result = await open({
+			directory: true,
+			defaultPath: $tempConfig.downloadFolder ?? (await path.downloadDir()),
+		});
+
+		if (result === null || Array.isArray(result)) return;
+
+		$tempConfig.downloadFolder = result;
+	}
 </script>
 
 {#if $tempConfig !== undefined}
@@ -63,7 +76,41 @@
 		<section class="box">
 			<h1 class="subtitle has-background-white"><i class="fa-solid fa-gear"></i> General</h1>
 
-			<h2 class="subtitle has-text-grey-light">No settings</h2>
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Downloads</label>
+				<div class="control has-icons-left">
+					<input
+						class="input is-primary"
+						placeholder="Download path"
+						disabled
+						bind:value={$tempConfig.downloadFolder} />
+					<!-- svelte-ignore a11y-click-events-have-key-events -->
+					<span
+						class="icon is-small is-left has-text-black"
+						style="cursor: pointer; pointer-events: all;"
+						on:click={selectFolder}>
+						<i class="fas fa-folder"></i>
+					</span>
+				</div>
+			</div>
+
+			<div class="field">
+				<!-- svelte-ignore a11y-label-has-associated-control -->
+				<label class="label">Downloads</label>
+				<div class="control">
+					<label>
+						<input
+							class="checkbox is-primary is-small"
+							type="checkbox"
+							bind:checked={$tempConfig.groupSongsInFolder} />
+						Download to folder
+						<span class="help"
+							>Download albums/playlists inside a new folder instead of the selected
+							path.</span>
+					</label>
+				</div>
+			</div>
 		</section>
 
 		<section class="box">
