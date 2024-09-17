@@ -29,6 +29,7 @@
 		<div class="list-item-description">
 			<div class="is-flex is-justify-content-space-between">
 				<div>
+					<i class="fa-brands fa-deezer"></i>
 					<span><b>Album</b> | {album.songs.length} tracks</span>
 				</div>
 				<span title={album.artist} class="is-single-line has-text-black-bis"
