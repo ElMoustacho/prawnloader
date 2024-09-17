@@ -1,7 +1,7 @@
 import type { Config } from '$models/Config';
 import type { Event } from '$models/Event';
 import type { Item } from '$models/Item';
-import type { QueueItem } from '$models/QueueItem';
+import type { DownloadRequest } from '$models/parameters/DownloadRequest';
 import { invoke } from '@tauri-apps/api';
 import {
 	listen,
@@ -34,7 +34,7 @@ type CommandReturn<C extends Command> = Commands[C][1];
 
 export interface Commands {
 	get_item: [{ url: string }, Item];
-	request_download: [{ request: QueueItem }, void];
+	request_download: [{ request: DownloadRequest }, void];
 	get_config: [NoParams, Config];
 	update_config: [{ config: Config }, Config];
 }
