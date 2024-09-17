@@ -43,6 +43,7 @@
 							item,
 							request_id: uuidv4(),
 							download_status: 'Inactive',
+							error: false,
 						});
 						$queue = $queue;
 					},

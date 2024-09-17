@@ -6,6 +6,7 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import '../scss/app.scss';
+	import { addLog, formatLogDownloadError, formatLogSuccess } from '$lib/log';
 
 	const links = [
 		['/', 'Home'],
@@ -14,11 +15,10 @@
 
 	onMount(() => {
 		// Download related event listeners
-		listen('start', e => {
-			const id = e.payload;
+		listen('start', ({ payload: uuid }) => {
 			const firstSongIndex = $queue.findIndex(
 				queueItem =>
-					queueItem.request_id === id && queueItem.download_status === 'Inactive',
+					queueItem.request_id === uuid && queueItem.download_status === 'Inactive',
 			);
 
 			if (firstSongIndex < 0) return;
@@ -26,24 +26,27 @@
 			$queue[firstSongIndex].download_status = 'Downloading';
 		});
 
-		listen('finish', e => {
-			const id = e.payload;
-			const firstSongIndex = $queue.findIndex(queueItem => queueItem.request_id === id);
+		listen('finish', ({ payload: uuid }) => {
+			const itemIndex = $queue.findIndex(queueItem => queueItem.request_id === uuid);
 
-			if (firstSongIndex < 0) return;
+			if (itemIndex < 0) return;
 
-			$queue.splice(firstSongIndex, 1);
+			addLog(formatLogSuccess($queue[itemIndex].item));
+
+			$queue.splice(itemIndex, 1);
 			$queue = $queue;
-
-			// FIXME: Re-enable logs
-			// addLog(formatLogSuccess(song));
 		});
 
 		// Error related event listeners
-		listen('download_error', e => {
-			// TODO: Remove item or re-enable download on error
-			// FIXME: Re-enable logs
-			// addLog(formatLogDownloadError(...e.payload));
+		listen('download_error', ({ payload: [uuid, errMsg] }) => {
+			const itemIndex = $queue.findIndex(item => item.request_id === uuid);
+
+			if (itemIndex < 0) return;
+
+			addLog(formatLogDownloadError($queue[itemIndex].item, errMsg));
+
+			$queue.splice(itemIndex, 1);
+			$queue = $queue;
 		});
 
 		document.addEventListener('keydown', ctrlTabListener);
