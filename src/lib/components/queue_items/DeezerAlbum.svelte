@@ -15,10 +15,6 @@
 </script>
 
 <div class="list-item p-2">
-	{#if queueItem.error}
-		<span class="tag">Error</span>
-	{/if}
-
 	<div class="list-item-image">
 		<figure class="image is-32x32">
 			<img src={album.cover_url} alt="" />
@@ -29,6 +25,9 @@
 		<div class="list-item-title" title={album.title}>
 			<span>[<b>{queueItem.download_status}</b>]</span>
 			<span>{album.title}</span>
+			{#if !queueItem.error}
+				<span class="tag is-danger">Download Error</span>
+			{/if}
 		</div>
 		<div class="list-item-description">
 			<div class="is-flex is-justify-content-space-between">
