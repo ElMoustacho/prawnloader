@@ -52,7 +52,7 @@
 			<button
 				class="button is-danger"
 				on:click={() =>
-					queue.update(queue => queue.filter(x => x.request_id === queueItem.request_id))}
+					queue.update(queue => queue.filter(x => x.request_id !== queueItem.request_id))}
 				disabled={downloading}>
 				<span class="icon is-small">
 					<i class="fas fa-trash" />
