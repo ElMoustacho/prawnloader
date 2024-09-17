@@ -6,7 +6,7 @@
 	export let queueItem: QueueItem;
 
 	if (queueItem.item.type !== 'DeezerTrack')
-		throw new Error('Item should be of type DeezerAlbum.');
+		throw new Error('Item should be of type DeezerTrack.');
 
 	let track = queueItem.item.track;
 
