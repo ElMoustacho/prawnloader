@@ -20,8 +20,6 @@ use super::{replace_illegal_characters, DeezerId, DownloadRequest, ProgressEvent
 
 static DOWNLOAD_THREADS: u64 = 4;
 
-// DEBUG: Disable warning beacause Config is not yet used for deezer
-#[allow(dead_code)]
 struct DeezerRequest(DownloadRequest, Config);
 
 #[derive(Debug)]
@@ -40,9 +38,9 @@ impl Downloader {
 
             tokio::spawn(async move {
                 let downloader = DeezerDownloader::new().await.unwrap();
-                while let Ok(DeezerRequest(request, ..)) = _download_rx.recv() {
-                    let request_id = request.request_id;
-                    let result = match request.item {
+                while let Ok(request) = _download_rx.recv() {
+                    let request_id = request.0.request_id;
+                    let result = match request.0.item {
                         Item::DeezerAlbum { .. } => {
                             download_album(request, &downloader, &_progress_tx).await
                         }
@@ -116,12 +114,12 @@ impl Downloader {
 }
 
 async fn download_song(
-    request: DownloadRequest,
+    request: DeezerRequest,
     downloader: &DeezerDownloader,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    let DownloadRequest { item, request_id } = request;
-    let Item::DeezerTrack { track } = item else {
+    let DownloadRequest { item, request_id } = request.0;
+    let Item::DeezerTrack(track) = item else {
         panic!("Item should be DeezerTrack.");
     };
 
@@ -141,16 +139,12 @@ async fn download_song(
 }
 
 async fn download_album(
-    request: DownloadRequest,
+    request: DeezerRequest,
     downloader: &DeezerDownloader,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    let DownloadRequest { request_id, item } = request;
-    let Item::DeezerAlbum {
-        album,
-        merge_tracks,
-    } = item
-    else {
+    let DeezerRequest(DownloadRequest { request_id, item }, config) = request;
+    let Item::DeezerAlbum(album) = item else {
         panic!("Item should be DeezerAlbum.");
     };
 
@@ -166,7 +160,7 @@ async fn download_album(
         .collect();
     let maybe_songs = join_all(maybe_songs).await;
 
-    if merge_tracks {
+    if config.deezer_merge_tracks {
         // Immediatly return if there is an error on any song
         let songs: Result<Vec<deezer_downloader::Song>, _> = maybe_songs.into_iter().collect();
         let songs = songs.map_err(|err| eyre!(err.to_string()))?;

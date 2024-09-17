@@ -28,61 +28,40 @@ struct ConfigState {
 }
 
 #[tauri::command]
-async fn get_item(
-    url: String,
-    state: State<'_, DownloadersState>,
-    config_state: State<'_, Mutex<ConfigState>>,
-) -> Result<Item, String> {
+async fn get_item(url: String, state: State<'_, DownloadersState>) -> Result<Item, String> {
     let parsed_id = parse_id(&url)
         .await
         .map_err(|_| format!("Unable to parse URL\"{url}\""))?;
 
-    let Config {
-        deezer_merge_tracks: merge_tracks,
-        youtube_split_chapters,
-        ..
-    } = config_state.lock().unwrap().config;
-
     let item: Item = match parsed_id {
-        ParsedId::DeezerAlbum(id) => Item::DeezerAlbum {
-            album: state
+        ParsedId::DeezerAlbum(id) => Item::DeezerAlbum(
+            state
                 .deezer_downloader
                 .get_album(id)
                 .await
                 .ok_or(format!("Invalid album id {id}"))?,
-            merge_tracks,
-        },
-        ParsedId::DeezerTrack(id) => Item::DeezerTrack {
-            track: state
+        ),
+        ParsedId::DeezerTrack(id) => Item::DeezerTrack(
+            state
                 .deezer_downloader
                 .get_song(id)
                 .await
                 .ok_or(format!("Invalid track id {id}"))?,
-        },
-        ParsedId::YoutubeVideo(id) => {
-            let (video, has_chapters) = state
+        ),
+        ParsedId::YoutubeVideo(id) => Item::YoutubeVideo(
+            state
                 .youtube_downloader
                 .get_song(id)
                 .await
-                .ok_or(format!("Invalid video id"))?;
-            let split_by_chapters = if has_chapters {
-                Some(youtube_split_chapters)
-            } else {
-                None
-            };
-
-            Item::YoutubeVideo {
-                video,
-                split_by_chapters,
-            }
-        }
-        ParsedId::YoutubePlaylist(id) => Item::YoutubePlaylist {
-            playlist: state
+                .ok_or(format!("Invalid video id"))?,
+        ),
+        ParsedId::YoutubePlaylist(id) => Item::YoutubePlaylist(
+            state
                 .youtube_downloader
                 .get_playlist(id)
                 .await
                 .ok_or(format!("Invalid playlist id"))?,
-        },
+        ),
     };
 
     Ok(item)

@@ -17,7 +17,7 @@ use tempfile::TempDir;
 use tokio::process::Command;
 
 use crate::{
-    config::{Config, YoutubeFormat},
+    config::Config,
     models::music::{Album, Item, Song},
 };
 
@@ -45,14 +45,12 @@ impl Downloader {
             let _progress_tx = progress_tx.clone();
 
             tokio::spawn(async move {
-                while let Ok(YoutubeRequest(request, config)) = _download_rx.recv() {
-                    let request_id = request.request_id;
-                    let result = match request.item {
-                        Item::YoutubeVideo { .. } => {
-                            download_song(request, &config.youtube_format, &_progress_tx).await
-                        }
+                while let Ok(request) = _download_rx.recv() {
+                    let request_id = request.0.request_id;
+                    let result = match request.0.item {
+                        Item::YoutubeVideo { .. } => download_song(request, &_progress_tx).await,
                         Item::YoutubePlaylist { .. } => {
-                            download_playlist(request, &config.youtube_format, &_progress_tx).await
+                            download_playlist(request, &_progress_tx).await
                         }
 
                         _ => continue,
@@ -76,12 +74,11 @@ impl Downloader {
             .expect("Channel should be open");
     }
 
-    pub async fn get_song(&self, id: YoutubeId) -> Option<(Song, bool)> {
+    pub async fn get_song(&self, id: YoutubeId) -> Option<Song> {
         let video = Video::new(id.to_string()).ok()?;
         let video_details = video.get_basic_info().await.ok()?.video_details;
-        let empty = !video_details.chapters.is_empty();
 
-        Some((video_details.into(), empty))
+        Some(video_details.into())
     }
 
     pub async fn get_playlist(&self, id: YoutubePlaylistId) -> Option<Album> {
@@ -106,20 +103,13 @@ impl Downloader {
     }
 }
 
-async fn download_song(
-    DownloadRequest { request_id, item }: DownloadRequest,
-    format: &YoutubeFormat,
-    progress_tx: &Sender<ProgressEvent>,
-) -> Result<()> {
-    let Item::YoutubeVideo {
-        video: song,
-        split_by_chapters,
-    } = item
-    else {
+async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEvent>) -> Result<()> {
+    let YoutubeRequest(DownloadRequest { item, request_id }, config) = request;
+    let Item::YoutubeVideo(song) = item else {
         unreachable!("Item should be YoutubeVideo.");
     };
 
-    let file_format: String = format.to_string();
+    let file_format: String = config.youtube_format.to_string();
     let video = Video::new(song.id.clone())?;
 
     // TODO: Allow the target directory to be given.
@@ -131,7 +121,7 @@ async fn download_song(
         video_filter: None,
     };
     progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
-    if let Some(true) = split_by_chapters {
+    if config.youtube_split_chapters {
         let video_details = video.get_info().await?.video_details;
 
         let temp_dir = TempDir::new()?;
@@ -169,11 +159,11 @@ async fn download_song(
 }
 
 async fn download_playlist(
-    DownloadRequest { request_id, item }: DownloadRequest,
-    format: &YoutubeFormat,
+    request: YoutubeRequest,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    let Item::YoutubePlaylist { playlist } = item else {
+    let YoutubeRequest(DownloadRequest { item, request_id }, config) = request;
+    let Item::YoutubePlaylist(playlist) = item else {
         unreachable!("Item should be YoutubePlaylist.");
     };
 
@@ -183,12 +173,13 @@ async fn download_playlist(
         .map(|song| {
             let download_dir =
                 DOWNLOAD_FOLDER.join(replace_illegal_characters(&playlist.title.clone()));
+            let file_format = config.youtube_format.to_string();
             async move {
-                let file_format = format.to_string();
+                let file_format = file_format.clone();
                 let file_name = format_filename(&song.title, &file_format);
                 let file_path = download_dir.join(file_name);
                 let args = FFmpegArgs {
-                    format: Some(file_format),
+                    format: Some(file_format.to_owned()),
                     audio_filter: None,
                     video_filter: None,
                 };

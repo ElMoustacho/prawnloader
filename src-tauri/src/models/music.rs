@@ -21,18 +21,10 @@ pub struct SongAlbum {
 #[serde(tag = "type")]
 #[ts(export)]
 pub enum Item {
-    #[serde(rename_all = "camelCase")]
-    DeezerAlbum { album: Album, merge_tracks: bool },
-    #[serde(rename_all = "camelCase")]
-    DeezerTrack { track: Song },
-    #[serde(rename_all = "camelCase")]
-    YoutubeVideo {
-        video: Song,
-        // If the video has chapters, will be Some(bool), otherwise None
-        split_by_chapters: Option<bool>,
-    },
-    #[serde(rename_all = "camelCase")]
-    YoutubePlaylist { playlist: Album },
+    DeezerAlbum(Album),
+    DeezerTrack(Song),
+    YoutubeVideo(Song),
+    YoutubePlaylist(Album),
 }
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]

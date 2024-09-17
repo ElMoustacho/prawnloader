@@ -2,13 +2,14 @@
 	import type { QueueItem } from '$lib/music';
 	import { queue } from '$lib/stores';
 	import { invoke } from '$lib/tauri-wrapper';
+	import type { Album } from '$models/Album';
 
 	export let queueItem: QueueItem;
 
 	if (queueItem.item.type !== 'DeezerAlbum')
 		throw new Error('Item should be of type DeezerAlbum.');
 
-	const { album } = queueItem.item;
+	const album: Album = queueItem.item;
 
 	$: downloading = queueItem.download_status === 'Downloading';
 </script>

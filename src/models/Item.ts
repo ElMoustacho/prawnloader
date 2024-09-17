@@ -2,4 +2,4 @@
 import type { Album } from "./Album";
 import type { Song } from "./Song";
 
-export type Item = { "type": "DeezerAlbum", album: Album, mergeTracks: boolean, } | { "type": "DeezerTrack", track: Song, } | { "type": "YoutubeVideo", video: Song, splitByChapters: boolean | null, } | { "type": "YoutubePlaylist", playlist: Album, };
+export type Item = { "type": "DeezerAlbum" } & Album | { "type": "DeezerTrack" } & Song | { "type": "YoutubeVideo" } & Song | { "type": "YoutubePlaylist" } & Album;

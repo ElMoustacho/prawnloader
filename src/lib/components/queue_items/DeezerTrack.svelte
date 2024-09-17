@@ -2,13 +2,14 @@
 	import type { QueueItem } from '$lib/music';
 	import { queue } from '$lib/stores';
 	import { invoke } from '$lib/tauri-wrapper';
+	import type { Song } from '$models/Song';
 
 	export let queueItem: QueueItem;
 
 	if (queueItem.item.type !== 'DeezerTrack')
 		throw new Error('Item should be of type DeezerTrack.');
 
-	let track = queueItem.item.track;
+	let track: Song = queueItem.item;
 
 	$: downloading = queueItem.download_status === 'Downloading';
 </script>

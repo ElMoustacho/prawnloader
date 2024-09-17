@@ -2,13 +2,14 @@
 	import type { QueueItem } from '$lib/music';
 	import { queue } from '$lib/stores';
 	import { invoke } from '$lib/tauri-wrapper';
+	import type { Song } from '$models/Song';
 
 	export let queueItem: QueueItem;
 
 	if (queueItem.item.type !== 'YoutubeVideo')
 		throw new Error('Item should be of type YoutubeVideo.');
 
-	let { video } = queueItem.item;
+	let video: Song = queueItem.item;
 
 	$: downloading = queueItem.download_status === 'Downloading';
 </script>
