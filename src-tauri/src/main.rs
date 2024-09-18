@@ -99,10 +99,13 @@ fn get_config(state: State<'_, Mutex<ConfigState>>) -> Result<Config, ()> {
 
 #[tauri::command]
 fn update_config(config: Config, state: State<'_, Mutex<ConfigState>>) -> Result<Config, String> {
-    state.lock().as_mut().unwrap().config = config;
+    let new_config = config.clone();
+    state.lock().as_mut().unwrap().config = new_config;
+
+    config.save().map_err(|err| err.to_string())?;
 
     // Return the modified config in case we need to do additional checks later
-    Ok(state.lock().unwrap().config.to_owned())
+    Ok(config)
 }
 
 #[tokio::main]
@@ -151,7 +154,7 @@ async fn main() {
             });
 
             app.manage(Mutex::new(ConfigState {
-                config: Config::default(),
+                config: Config::load().expect("Configuration is not formatted correctly"),
             }));
 
             Ok(())
