@@ -32,7 +32,6 @@ pub struct Config {
     // General
     // TODO: Use this value
     pub group_songs_in_folder: bool,
-    // TODO: Use this value
     pub download_folder: PathBuf,
 
     // Deezer

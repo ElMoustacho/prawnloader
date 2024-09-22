@@ -1,4 +1,4 @@
-use std::process::Stdio;
+use std::{path::Path, process::Stdio};
 
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
@@ -8,7 +8,6 @@ use deezer_downloader::{
     Downloader as DeezerDownloader, SongMetadata,
 };
 use futures::future::join_all;
-use tauri::api::path::download_dir;
 use tokio::{io::AsyncWriteExt, process::Command};
 
 use crate::{
@@ -118,7 +117,7 @@ async fn download_song(
     downloader: &DeezerDownloader,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    let DownloadRequest { item, request_id } = request.0;
+    let DeezerRequest(DownloadRequest { item, request_id }, config) = request;
     let Item::DeezerTrack(track) = item else {
         panic!("Item should be DeezerTrack.");
     };
@@ -133,7 +132,7 @@ async fn download_song(
         Err(_) => return Err(eyre!("Song not found.")),
     };
 
-    write_song_to_file(&song)?;
+    write_song_to_file(&song, &config.download_folder)?;
 
     Ok(())
 }
@@ -150,7 +149,6 @@ async fn download_album(
 
     let _ = progress_tx.send(ProgressEvent::Start(request_id));
 
-    let download_dir = download_dir().ok_or(eyre!("Cannot find download directory."))?;
     let maybe_songs: Vec<_> = album
         .songs
         .into_iter()
@@ -166,7 +164,8 @@ async fn download_album(
         let songs = songs.map_err(|err| eyre!(err.to_string()))?;
 
         let file_name = format_title(&album.artist, &album.title);
-        let file_path_str = download_dir
+        let file_path_str = config
+            .download_folder
             .join(file_name)
             .into_os_string()
             .into_string()
@@ -184,7 +183,7 @@ async fn download_album(
         ];
         let mut ffmpeg_process = Command::new("ffmpeg")
             .args(args)
-            .current_dir(download_dir)
+            .current_dir(config.download_folder)
             .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -207,7 +206,7 @@ async fn download_album(
             let result: Result<()> = match maybe_song {
                 Ok(mut song) => {
                     song.tag.set_track(i as u32 + 1);
-                    write_song_to_file(&song)
+                    write_song_to_file(&song, &config.download_folder)
                 }
                 Err(err) => Err(eyre!(err)),
             };
@@ -228,12 +227,7 @@ async fn download_album(
 
 /// Write a [Song] to the download directory.
 ///
-/// TODO: Allow the target directory to be given.
-fn write_song_to_file(song: &deezer_downloader::Song) -> Result<()> {
-    let Some(download_dir) = download_dir() else {
-        return Ok(());
-    };
-
+fn write_song_to_file(song: &deezer_downloader::Song, download_dir: &Path) -> Result<()> {
     let song_title = format_song(song);
     song.write_to_file(download_dir.join(song_title))
         .map_err(|_| eyre!("An error occured while writing the file."))?;

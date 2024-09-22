@@ -1,18 +1,12 @@
-use std::{
-    fs::DirBuilder,
-    path::{Path, PathBuf},
-    process::Stdio,
-};
+use std::{fs::DirBuilder, path::Path, process::Stdio};
 
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
 use futures::future::join_all;
-use once_cell::sync::Lazy;
 use rusty_ytdl::{
     search::{Playlist, PlaylistSearchOptions},
     FFmpegArgs, Video, VideoDetails,
 };
-use tauri::api::path::download_dir;
 use tempfile::TempDir;
 use tokio::process::Command;
 
@@ -26,9 +20,6 @@ use super::{
 };
 
 static DOWNLOAD_THREADS: u64 = 4;
-
-// DEBUG: Temporrary folder before adding it to the config
-static DOWNLOAD_FOLDER: Lazy<PathBuf> = Lazy::new(|| download_dir().unwrap());
 
 struct YoutubeRequest(DownloadRequest, Config);
 
@@ -112,7 +103,6 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
     let file_format: String = config.youtube_format.to_string();
     let video = Video::new(song.id.clone())?;
 
-    // TODO: Allow the target directory to be given.
     let file_name = format_filename(&song.title, &file_format);
 
     let args = FFmpegArgs {
@@ -130,7 +120,9 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
         let temp_vid_filename = "temp";
         let temp_vid_path = temp_dir_path.join(temp_vid_filename);
 
-        let dest_folder_path = DOWNLOAD_FOLDER.join(replace_illegal_characters(&song.title));
+        let dest_folder_path = config
+            .download_folder
+            .join(replace_illegal_characters(&song.title));
 
         video
             .download_with_ffmpeg(&temp_vid_path, Some(args))
@@ -148,10 +140,10 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
 
         drop(temp_dir);
     } else {
-        let video_path = DOWNLOAD_FOLDER.join(file_name);
+        let video_path = config.download_folder.join(file_name);
         DirBuilder::new()
             .recursive(true)
-            .create(DOWNLOAD_FOLDER.clone())?;
+            .create(config.download_folder.clone())?;
         video.download_with_ffmpeg(video_path, Some(args)).await?;
     }
 
@@ -171,8 +163,9 @@ async fn download_playlist(
         .songs
         .into_iter()
         .map(|song| {
-            let download_dir =
-                DOWNLOAD_FOLDER.join(replace_illegal_characters(&playlist.title.clone()));
+            let download_dir = config
+                .download_folder
+                .join(replace_illegal_characters(&playlist.title.clone()));
             let file_format = config.youtube_format.to_string();
             async move {
                 let file_format = file_format.clone();
