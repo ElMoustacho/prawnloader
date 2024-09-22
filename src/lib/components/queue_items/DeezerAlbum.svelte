@@ -25,7 +25,7 @@
 		<div class="list-item-title" title={album.title}>
 			<span>[<b>{queueItem.download_status}</b>]</span>
 			<span>{album.title}</span>
-			{#if !queueItem.error}
+			{#if queueItem.error}
 				<span class="tag is-danger">Download Error</span>
 			{/if}
 		</div>
