@@ -1,4 +1,4 @@
-use std::{path::Path, process::Stdio};
+use std::{fs::create_dir_all, path::Path, process::Stdio};
 
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
@@ -206,7 +206,14 @@ async fn download_album(
             let result: Result<()> = match maybe_song {
                 Ok(mut song) => {
                     song.tag.set_track(i as u32 + 1);
-                    write_song_to_file(&song, &config.download_folder)
+                    let download_folder = if config.group_songs_in_folder {
+                        &config
+                            .download_folder
+                            .join(format_album_title(&album.artist, &album.title))
+                    } else {
+                        &config.download_folder
+                    };
+                    write_song_to_file(&song, &download_folder)
                 }
                 Err(err) => Err(eyre!(err)),
             };
@@ -228,9 +235,10 @@ async fn download_album(
 /// Write a [Song] to the download directory.
 ///
 fn write_song_to_file(song: &deezer_downloader::Song, download_dir: &Path) -> Result<()> {
+    create_dir_all(download_dir)?;
     let song_title = format_song(song);
     song.write_to_file(download_dir.join(song_title))
-        .map_err(|_| eyre!("An error occured while writing the file."))?;
+        .map_err(|err| eyre!(err))?;
 
     Ok(())
 }
@@ -244,6 +252,10 @@ fn format_song(song: &deezer_downloader::Song) -> String {
 
 fn format_title(artist: &str, title: &str) -> String {
     replace_illegal_characters(&(format!("{} - {}.mp3", artist, title)))
+}
+
+fn format_album_title(artist: &str, title: &str) -> String {
+    replace_illegal_characters(&(format!("{} - {}", artist, title)))
 }
 
 fn metadata_from_song(song: Song) -> SongMetadata {
