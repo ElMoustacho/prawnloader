@@ -30,7 +30,6 @@ const CONFIG_FILENAME: &str = "config.json";
 #[ts(export)]
 pub struct Config {
     // General
-    // TODO: Use this value
     pub group_songs_in_folder: bool,
     pub download_folder: PathBuf,
 

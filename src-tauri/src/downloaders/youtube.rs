@@ -1,4 +1,8 @@
-use std::{fs::DirBuilder, path::Path, process::Stdio};
+use std::{
+    fs::{create_dir_all, DirBuilder},
+    path::Path,
+    process::Stdio,
+};
 
 use color_eyre::eyre::{eyre, Result};
 use crossbeam_channel::{unbounded, Sender};
@@ -159,18 +163,23 @@ async fn download_playlist(
         unreachable!("Item should be YoutubePlaylist.");
     };
 
+    let download_dir = if config.group_songs_in_folder {
+        config
+            .download_folder
+            .join(replace_illegal_characters(&playlist.title.clone()))
+    } else {
+        config.download_folder
+    };
     let futures: Vec<_> = playlist
         .songs
         .into_iter()
         .map(|song| {
-            let download_dir = config
-                .download_folder
-                .join(replace_illegal_characters(&playlist.title.clone()));
             let file_format = config.youtube_format.to_string();
+            let download_dir = download_dir.clone();
             async move {
                 let file_format = file_format.clone();
                 let file_name = format_filename(&song.title, &file_format);
-                let file_path = download_dir.join(file_name);
+                let file_path = &download_dir.join(file_name);
                 let args = FFmpegArgs {
                     format: Some(file_format.to_owned()),
                     audio_filter: None,
@@ -178,7 +187,7 @@ async fn download_playlist(
                 };
 
                 if let Ok(video) = Video::new(song.id.clone()) {
-                    DirBuilder::new().recursive(true).create(download_dir)?;
+                    create_dir_all(&download_dir)?;
                     video.download_with_ffmpeg(file_path, Some(args)).await?;
 
                     return Ok(());
