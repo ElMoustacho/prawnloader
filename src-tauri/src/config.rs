@@ -49,8 +49,6 @@ impl Config {
             Err(_) => Config::default(),
         };
 
-        println!("{config:?}");
-
         Ok(config)
     }
 
