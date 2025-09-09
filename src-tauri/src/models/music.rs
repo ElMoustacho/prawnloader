@@ -1,6 +1,7 @@
 use deezer::models::Track;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use youtube_dl::SingleVideo;
 
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
 #[ts(export)]
@@ -53,47 +54,18 @@ impl From<Track> for Song {
     }
 }
 
-impl From<rusty_ytdl::search::Video> for Song {
-    fn from(video: rusty_ytdl::search::Video) -> Self {
-        let thumbnail = video
-            .thumbnails
-            .first()
-            .map_or_else(String::default, |t| t.url.clone());
-
+impl From<SingleVideo> for Song {
+    fn from(video: SingleVideo) -> Self {
         Self {
             id: video.id,
-            title: video.title,
+            title: video.title.expect("Video should have a title"),
+            // TODO
             album: SongAlbum {
                 title: String::new(),
-                cover_url: thumbnail,
+                cover_url: video.thumbnail.expect("Video should have a thumbnail"),
             },
-            artist: video.channel.name,
-            release_date: video.uploaded_at.unwrap_or_default(),
-        }
-    }
-}
-
-impl From<rusty_ytdl::VideoDetails> for Song {
-    fn from(video_details: rusty_ytdl::VideoDetails) -> Self {
-        let artist = video_details
-            .author
-            .map(|author| author.name)
-            .unwrap_or_default();
-        let album = SongAlbum {
-            title: String::new(),
-            cover_url: video_details
-                .thumbnails
-                .first()
-                .map(|t| t.url.clone())
-                .unwrap_or_default(),
-        };
-
-        Self {
-            id: video_details.video_id,
-            title: video_details.title,
-            album,
-            artist,
-            release_date: video_details.upload_date,
+            artist: video.uploader.expect("Video should have an artist"),
+            release_date: video.upload_date.expect("Video should have an upload date"),
         }
     }
 }
