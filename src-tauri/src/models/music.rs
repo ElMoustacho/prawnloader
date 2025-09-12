@@ -12,6 +12,29 @@ pub struct Album {
     pub songs: Vec<Song>,
 }
 
+impl From<youtube_dl::Playlist> for Album {
+    fn from(playlist: youtube_dl::Playlist) -> Self {
+        Self {
+            title: playlist.title.unwrap_or_default(),
+            artist: playlist.uploader.unwrap_or_default(),
+            cover_url: playlist
+                .thumbnails
+                .unwrap()
+                .first()
+                .unwrap()
+                .url
+                .clone()
+                .unwrap(),
+            songs: playlist
+                .entries
+                .unwrap()
+                .into_iter()
+                .map(Into::into)
+                .collect(),
+        }
+    }
+}
+
 #[derive(TS, Debug, Serialize, Deserialize, Clone)]
 pub struct SongAlbum {
     pub title: String,
@@ -58,14 +81,23 @@ impl From<SingleVideo> for Song {
     fn from(video: SingleVideo) -> Self {
         Self {
             id: video.id,
-            title: video.title.expect("Video should have a title"),
+            title: video.title.unwrap_or_default(),
             // TODO
             album: SongAlbum {
                 title: String::new(),
-                cover_url: video.thumbnail.expect("Video should have a thumbnail"),
+                cover_url: match video.thumbnails {
+                    Some(thumbnails) => thumbnails
+                        .iter()
+                        .reduce(|acc, e| if acc.height > e.height { acc } else { e })
+                        .unwrap()
+                        .url
+                        .clone()
+                        .unwrap_or_default(),
+                    None => String::new(),
+                },
             },
-            artist: video.uploader.expect("Video should have an artist"),
-            release_date: video.upload_date.expect("Video should have an upload date"),
+            artist: video.uploader.unwrap_or_default(),
+            release_date: video.upload_date.unwrap_or_default(),
         }
     }
 }

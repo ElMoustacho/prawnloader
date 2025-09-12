@@ -6,7 +6,7 @@ authors = ["ElMoustacho"]
 license = "MIT"
 repository = "https://github.com/ElMoustacho/prawnloader"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.89"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -33,6 +33,7 @@ ts-rs = "9.0.1"
 tempfile = "3.6.0"
 sanitize-filename = "0.5.0"
 youtube_dl = { version = "0.10.0", features = ["tokio"] }
+env_logger = "0.11.8"
 [dependencies.uuid]
 version = "1.10.0"
 features = [

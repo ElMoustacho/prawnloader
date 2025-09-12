@@ -53,14 +53,14 @@ async fn get_item(url: String, state: State<'_, DownloadersState>) -> Result<Ite
                 .youtube_downloader
                 .get_song(id)
                 .await
-                .ok_or(format!("Invalid video id"))?,
+                .map_err(|err| err.to_string())?,
         ),
         ParsedId::YoutubePlaylist(id) => Item::YoutubePlaylist(
             state
                 .youtube_downloader
                 .get_playlist(id)
                 .await
-                .ok_or(format!("Invalid playlist id"))?,
+                .map_err(|err| err.to_string())?,
         ),
     };
 
@@ -110,6 +110,7 @@ fn update_config(config: Config, state: State<'_, Mutex<ConfigState>>) -> Result
 
 #[tokio::main]
 async fn main() {
+    env_logger::init();
     tauri::Builder::default()
         .setup(|app| {
             let (progress_tx, progress_rx) = unbounded();

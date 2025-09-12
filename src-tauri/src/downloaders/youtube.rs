@@ -5,9 +5,9 @@ use std::{
     process::Stdio,
 };
 
-use color_eyre::eyre::{eyre, Result};
+use color_eyre::eyre::{eyre, OptionExt, Result};
 use crossbeam_channel::{unbounded, Sender};
-use futures::future::join_all;
+use deezer_downloader::song;
 use tauri::api::path::download_dir;
 use tempfile::TempDir;
 use tokio::process::Command;
@@ -69,19 +69,29 @@ impl Downloader {
             .expect("Channel should be open");
     }
 
-    pub async fn get_song(&self, id: YoutubeId) -> Option<Song> {
-        let video = match YoutubeDl::new(id).run_async().await.ok()? {
+    pub async fn get_song(&self, id: YoutubeId) -> Result<Song> {
+        let video = match YoutubeDl::new(id).run_async().await? {
             YoutubeDlOutput::Playlist(playlist) => {
                 unreachable!()
             }
             YoutubeDlOutput::SingleVideo(video) => video,
         };
 
-        Some((*video).into())
+        Ok((*video).into())
     }
 
-    pub async fn get_playlist(&self, id: YoutubePlaylistId) -> Option<Album> {
-        unimplemented!()
+    pub async fn get_playlist(&self, id: YoutubePlaylistId) -> Result<Album> {
+        let result = YoutubeDl::new(id)
+            .extra_arg("--compat-options")
+            .extra_arg("no-youtube-unavailable-videos")
+            .flat_playlist(true)
+            .run_async()
+            .await?
+            .into_playlist()
+            .ok_or_eyre("URL is not a playlist")?
+            .into();
+
+        Ok(result)
     }
 }
 
@@ -93,11 +103,27 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
 
     progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
 
-    YoutubeDl::new(song.id)
+    let split_chapters_str = if config.youtube_split_chapters {
+        "--split-chapters"
+    } else {
+        ""
+    };
+
+    let download_folder = if config.youtube_split_chapters && config.group_songs_in_folder {
+        config
+            .download_folder
+            .join(replace_illegal_characters(&song.title))
+    } else {
+        config.download_folder.clone()
+    };
+
+    let y = YoutubeDl::new(song.id)
         .extract_audio(true)
         .extra_arg("-t")
         .extra_arg("mp3")
-        .output_template("%(title).mp3")
+        .extra_arg(split_chapters_str)
+        .extra_arg("--embed-metadata")
+        .output_template("%(title)s.%(ext)s")
         .download_to_async(config.download_folder)
         .await?;
     Ok(())
@@ -107,55 +133,41 @@ async fn download_playlist(
     request: YoutubeRequest,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    unimplemented!()
+    let YoutubeRequest(DownloadRequest { item, request_id }, config) = request;
+    let Item::YoutubePlaylist(playlist) = item else {
+        unreachable!("Item should be YoutubePlaylist.");
+    };
+
+    let _ = progress_tx.send(ProgressEvent::Start(request_id));
+
+    for song in playlist.songs {
+        let download_folder = if config.group_songs_in_folder {
+            config
+                .download_folder
+                .join(replace_illegal_characters(&playlist.title))
+        } else {
+            config.download_folder.clone()
+        };
+
+        let split_chapters_str = if config.youtube_split_chapters {
+            "--split-chapters"
+        } else {
+            ""
+        };
+
+        let youtube_dl = YoutubeDl::new(song.id)
+            .extra_arg(split_chapters_str)
+            .extra_arg("--embed-metadata")
+            .extract_audio(true)
+            .extra_arg("-t")
+            .extra_arg("mp3")
+            .output_template("%(title)s.%(ext)s")
+            .download_to_async(download_folder)
+            .await?;
+    }
+
+    todo!()
 }
-
-// // TODO: Use ffmpeg stream to split song
-// async fn split_video_by_chapters(
-//     video_details: VideoDetails,
-//     file_format: String,
-//     video_source_path: &Path,
-//     dest_folder_path: &Path,
-// ) {
-//     for (index, chapter) in video_details.chapters.iter().enumerate() {
-//         let output_filename = format_filename(&chapter.title, &file_format);
-//         let output_path = dest_folder_path.join(output_filename);
-//         let start = chapter.start_time.to_string();
-//         let end;
-//         if index != video_details.chapters.len() - 1 {
-//             end = video_details
-//                 .chapters
-//                 .get(index + 1)
-//                 .unwrap()
-//                 .start_time
-//                 .to_string();
-//         } else {
-//             end = video_details.length_seconds.clone();
-//         }
-
-//         let args = vec![
-//             "-i",
-//             video_source_path.to_str().unwrap(),
-//             "-ss",
-//             &start,
-//             "-to",
-//             &end,
-//             "-c:a",
-//             "copy",
-//             output_path.to_str().unwrap(),
-//         ];
-//         Command::new("ffmpeg")
-//             .args(args)
-//             .stdout(Stdio::null())
-//             .stderr(Stdio::null())
-//             .kill_on_drop(true)
-//             .spawn()
-//             .unwrap()
-//             .wait()
-//             .await
-//             .unwrap();
-//     }
-// }
 
 fn format_filename(title: &str, extension: &str) -> String {
     format!("{}.{}", replace_illegal_characters(&title), extension)
