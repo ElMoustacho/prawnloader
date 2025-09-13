@@ -1,6 +1,7 @@
 use std::{
     env::{current_dir, current_exe},
     fs::{create_dir_all, DirBuilder},
+    io::Write,
     path::{Path, PathBuf},
     process::Stdio,
 };
@@ -8,14 +9,19 @@ use std::{
 use color_eyre::eyre::{eyre, OptionExt, Result};
 use crossbeam_channel::{unbounded, Sender};
 use deezer_downloader::song;
+use sanitize_filename::sanitize;
 use tauri::api::path::download_dir;
-use tempfile::TempDir;
-use tokio::process::Command;
+use tempfile::{tempfile, TempDir};
+use tokio::{
+    fs::File,
+    io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader},
+    process::{ChildStdout, Command},
+};
 use url::Url;
 use youtube_dl::{YoutubeDl, YoutubeDlOutput};
 
 use crate::{
-    config::Config,
+    config::{Config, YoutubeFormat},
     models::music::{Album, Item, Song},
 };
 
@@ -103,12 +109,6 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
 
     progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
 
-    let split_chapters_str = if config.youtube_split_chapters {
-        "--split-chapters"
-    } else {
-        ""
-    };
-
     let download_folder = if config.youtube_split_chapters && config.group_songs_in_folder {
         config
             .download_folder
@@ -117,58 +117,204 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
         config.download_folder.clone()
     };
 
-    let y = YoutubeDl::new(song.id)
-        .extract_audio(true)
-        .extra_arg("-t")
-        .extra_arg("mp3")
-        .extra_arg(split_chapters_str)
-        .extra_arg("--embed-metadata")
-        .output_template("%(title)s.%(ext)s")
-        .download_to_async(config.download_folder)
-        .await?;
-    Ok(())
+    log::debug!("Download folder is {download_folder:#?}");
+
+    let mut yt_dlp_child = Command::new("yt-dlp")
+        .args(vec![
+            "--extract-audio",
+            "--audio-format",
+            "opus",
+            "-o",
+            "-", // -o - allows for piping the output to our program
+            "--embed-metadata",
+            &song.id,
+        ])
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to start yt-dlp");
+
+    let mut stdout = yt_dlp_child
+        .stdout
+        .take()
+        .expect("Process did not have a stdout");
+
+    let stderr = yt_dlp_child
+        .stderr
+        .take()
+        .expect("Process did not have a stderr");
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    let id = song.id.clone();
+    tokio::spawn(async move {
+        while let Ok(Some(line)) = stderr_reader.next_line().await {
+            log::info!("yt-dlp {}: {line}", id);
+        }
+    });
+
+    if !matches!(config.youtube_format, YoutubeFormat::WEBM) || config.youtube_split_chapters {
+        run_ffmpeg(stdout, &config, download_folder, song).await
+    } else {
+        let file_path = download_folder
+            .join(sanitize(song.title))
+            .with_extension(config.youtube_format.to_string());
+        log::debug!("Creating file {:#?}", &file_path);
+        let mut file = File::create(file_path).await?;
+
+        write_to_file(&mut stdout, &mut file).await
+    }
+}
+
+async fn run_ffmpeg(
+    mut pipe: ChildStdout,
+    config: &Config,
+    download_folder: PathBuf,
+    song: Song,
+) -> Result<()> {
+    let format = &config.youtube_format.to_string();
+    let args = vec![
+        "-loglevel",
+        "error",
+        "-f",
+        "webm", // Input format for the data, should be webm
+        "-i",
+        "pipe:",
+        "-f",
+        format,
+        "pipe:",
+    ];
+
+    log::debug!("Running ffmpeg with args {args:?}");
+
+    let mut ffmpeg_child = Command::new("ffmpeg")
+        .args(args)
+        .stderr(Stdio::piped())
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .expect("Failed to start ffmpeg");
+
+    let mut stdin = ffmpeg_child
+        .stdin
+        .take()
+        .expect("Process did not have a stdin");
+
+    let mut stdout = ffmpeg_child
+        .stdout
+        .take()
+        .expect("Process did not have a stdout");
+
+    let stderr = ffmpeg_child
+        .stderr
+        .take()
+        .expect("Process did not have a stderr");
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    tokio::spawn(async move {
+        while let Ok(Some(line)) = stderr_reader.next_line().await {
+            log::error!("Error when transforming song with ffmpeg: {line}");
+        }
+    });
+
+    tokio::spawn(async move {
+        let mut buffer = vec![0; 1024];
+        loop {
+            let bytes_read = pipe
+                .read(&mut buffer)
+                .await
+                .expect("Couldn't read from pipe");
+
+            if bytes_read == 0 {
+                break;
+            }
+
+            println!("Writing {bytes_read} to ffmpeg");
+
+            stdin
+                .write_all(&buffer[..bytes_read])
+                .await
+                .expect("Couldn't write to ffmpeg stdin");
+        }
+    });
+
+    let file_path = download_folder
+        .join(sanitize(song.title))
+        .with_extension(config.youtube_format.to_string());
+    log::debug!("Creating file on path {file_path:#?}");
+    let mut file = File::create(file_path).await?;
+
+    write_to_file(&mut stdout, &mut file).await
+}
+
+async fn write_to_file(reader: &mut ChildStdout, file: &mut File) -> Result<()> {
+    log::debug!("Writing to file");
+    let mut stdout_buffer = vec![0; 1024];
+    loop {
+        let bytes_read = reader.read(&mut stdout_buffer).await?;
+
+        if bytes_read == 0 {
+            return Ok(());
+        }
+
+        println!("Writing {bytes_read} to file");
+
+        file.write_all(&stdout_buffer[..bytes_read]).await?;
+    }
 }
 
 async fn download_playlist(
     request: YoutubeRequest,
     progress_tx: &Sender<ProgressEvent>,
 ) -> Result<()> {
-    let YoutubeRequest(DownloadRequest { item, request_id }, config) = request;
-    let Item::YoutubePlaylist(playlist) = item else {
-        unreachable!("Item should be YoutubePlaylist.");
-    };
-
-    let _ = progress_tx.send(ProgressEvent::Start(request_id));
-
-    for song in playlist.songs {
-        let download_folder = if config.group_songs_in_folder {
-            config
-                .download_folder
-                .join(replace_illegal_characters(&playlist.title))
-        } else {
-            config.download_folder.clone()
-        };
-
-        let split_chapters_str = if config.youtube_split_chapters {
-            "--split-chapters"
-        } else {
-            ""
-        };
-
-        let youtube_dl = YoutubeDl::new(song.id)
-            .extra_arg(split_chapters_str)
-            .extra_arg("--embed-metadata")
-            .extract_audio(true)
-            .extra_arg("-t")
-            .extra_arg("mp3")
-            .output_template("%(title)s.%(ext)s")
-            .download_to_async(download_folder)
-            .await?;
-    }
-
     todo!()
 }
 
 fn format_filename(title: &str, extension: &str) -> String {
     format!("{}.{}", replace_illegal_characters(&title), extension)
+}
+
+#[cfg(test)]
+mod tests {
+    use uuid::Uuid;
+
+    use crate::models::music::SongAlbum;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn download_song() {
+        env_logger::init();
+
+        static VIDEO_ID: &str = "bbcPLei01Ls";
+
+        let album = SongAlbum {
+            title: String::from("title"),
+            cover_url: String::from("cover_url"),
+        };
+        let song = Song {
+            id: VIDEO_ID.to_string(),
+            title: String::from("title"),
+            album,
+            artist: String::from("artist"),
+            release_date: String::from("release_date"),
+        };
+
+        let download_request = DownloadRequest {
+            item: Item::YoutubeVideo(song),
+            request_id: Uuid::default(),
+        };
+        let config = Config {
+            download_folder: download_dir().expect("Didn't find a download directory"),
+            youtube_format: YoutubeFormat::MP3,
+            youtube_split_chapters: false,
+            ..Default::default()
+        };
+        let request = YoutubeRequest(download_request, config);
+
+        let (progress_tx, progress_rx) = crossbeam_channel::unbounded();
+        super::download_song(request, &progress_tx)
+            .await
+            .expect("Error while downloading the song");
+    }
 }

@@ -2823,6 +2823,7 @@ dependencies = [
  "deezer_downloader",
  "env_logger",
  "futures",
+ "log",
  "once_cell",
  "regex",
  "reqwest 0.12.23",
