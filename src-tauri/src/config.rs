@@ -24,7 +24,6 @@ pub enum YoutubeFormat {
 
 const CONFIG_FILENAME: &str = "config.json";
 
-// TODO: Persist and load config
 #[derive(TS, Debug, Serialize, Deserialize, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 #[ts(export)]

@@ -82,7 +82,6 @@ impl From<SingleVideo> for Song {
         Self {
             id: video.id,
             title: video.title.unwrap_or_default(),
-            // TODO
             album: SongAlbum {
                 title: String::new(),
                 cover_url: match video.thumbnails {
