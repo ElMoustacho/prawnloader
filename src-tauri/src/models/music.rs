@@ -60,6 +60,8 @@ pub struct Song {
     pub album: SongAlbum,
     pub artist: String,
     pub release_date: String,
+    #[ts(inline)]
+    pub chapters: Option<Vec<Chapter>>,
 }
 
 impl From<Track> for Song {
@@ -73,6 +75,7 @@ impl From<Track> for Song {
                 cover_url: track.album.cover,
             },
             release_date: track.release_date,
+            chapters: None,
         }
     }
 }
@@ -97,6 +100,32 @@ impl From<SingleVideo> for Song {
             },
             artist: video.uploader.unwrap_or_default(),
             release_date: video.upload_date.unwrap_or_default(),
+            chapters: video
+                .chapters
+                .map(|chapters| chapters.into_iter().map(Into::into).collect()),
+        }
+    }
+}
+
+#[derive(TS, Debug, Serialize, Deserialize, Clone)]
+pub struct Chapter {
+    pub end_time: f64,
+    pub start_time: f64,
+    pub title: String,
+}
+
+impl From<youtube_dl::Chapter> for Chapter {
+    fn from(chapter: youtube_dl::Chapter) -> Self {
+        let youtube_dl::Chapter {
+            end_time,
+            start_time,
+            title,
+        } = chapter;
+
+        Self {
+            end_time: end_time.expect("Chapter doesn't have end_time"),
+            start_time: start_time.expect("Chapter doesn't have start_time"),
+            title: title.expect("Chapter doesn't have title"),
         }
     }
 }
