@@ -22,7 +22,7 @@ use youtube_dl::{YoutubeDl, YoutubeDlOutput};
 
 use crate::{
     config::{Config, YoutubeFormat},
-    models::music::{Album, Item, Song},
+    models::music::{Album, Chapter, Item, Song},
 };
 
 use super::{
@@ -109,7 +109,10 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
 
     progress_tx.send(ProgressEvent::Start(request_id)).unwrap();
 
-    let download_folder = if config.youtube_split_chapters && config.group_songs_in_folder {
+    let download_folder = if config.youtube_split_chapters
+        && config.group_songs_in_folder
+        && song.chapters.as_ref().is_some_and(|s| s.len() > 1)
+    {
         config
             .download_folder
             .join(replace_illegal_characters(&song.title))
@@ -129,7 +132,7 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
             "--embed-metadata",
             &song.id,
         ])
-        .stderr(Stdio::piped())
+        .stderr(Stdio::null())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .spawn()
@@ -140,28 +143,16 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
         .take()
         .expect("Process did not have a stdout");
 
-    let stderr = yt_dlp_child
-        .stderr
-        .take()
-        .expect("Process did not have a stderr");
-    let mut stderr_reader = BufReader::new(stderr).lines();
-
-    let id = song.id.clone();
-    tokio::spawn(async move {
-        while let Ok(Some(line)) = stderr_reader.next_line().await {
-            log::info!("yt-dlp {}: {line}", id);
-        }
-    });
-
+    // If the desired format is WEBM (default for youtube) or we need to split chapters, run ffmpeg
     if !matches!(config.youtube_format, YoutubeFormat::WEBM) || config.youtube_split_chapters {
         run_ffmpeg(stdout, &config, download_folder, song).await
     } else {
         let file_path = download_folder
             .join(sanitize(song.title))
             .with_extension(config.youtube_format.to_string());
-        log::debug!("Creating file {:#?}", &file_path);
         let mut file = File::create(file_path).await?;
 
+        // TODO: Maybe remove write_to_file to write directly with yt-dlp ?
         write_to_file(&mut stdout, &mut file).await
     }
 }
@@ -172,7 +163,10 @@ async fn run_ffmpeg(
     download_folder: PathBuf,
     song: Song,
 ) -> Result<()> {
+    let chapters = song.chapters;
     let format = &config.youtube_format.to_string();
+
+    // Initial arguments for starting ffmpeg
     let args = vec![
         "-loglevel",
         "error",
@@ -182,16 +176,45 @@ async fn run_ffmpeg(
         "pipe:",
         "-f",
         format,
-        "pipe:",
     ];
 
-    log::debug!("Running ffmpeg with args {args:?}");
+    let mut ffmpeg_cmd = Command::new("ffmpeg");
+    ffmpeg_cmd.args(args);
 
-    let mut ffmpeg_child = Command::new("ffmpeg")
-        .args(args)
+    // Generate the filter_complex to split audio into multiple files
+    if config.youtube_split_chapters && chapters.is_some() {
+        let chapters = chapters.unwrap();
+
+        let filter_complex = construct_audio_filter_complex(&chapters);
+        ffmpeg_cmd.args(vec!["-filter_complex", &filter_complex]);
+
+        // TODO: Add metatada depending on config?
+        // Map each output to a separate file
+        for (i, chapter) in chapters.iter().enumerate() {
+            let output_file = download_folder
+                .join(sanitize(chapter.title.clone()))
+                .with_extension(config.youtube_format.to_string()); // Change extension as needed
+
+            ffmpeg_cmd.arg("-map");
+            ffmpeg_cmd.arg(&format!("[a{}]", i));
+            ffmpeg_cmd.arg(output_file);
+        }
+    } else {
+        // If we don't split, simply output the song to the desired location
+        let output_file = download_folder
+            .join(sanitize(song.title))
+            .with_extension(config.youtube_format.to_string());
+        ffmpeg_cmd.arg(output_file);
+    }
+
+    log::debug!(
+        "Running ffmpeg with args {:?}",
+        ffmpeg_cmd.as_std().get_args().collect::<Vec<_>>()
+    );
+    let mut ffmpeg_child = ffmpeg_cmd
         .stderr(Stdio::piped())
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
+        .stdout(Stdio::null())
         .spawn()
         .expect("Failed to start ffmpeg");
 
@@ -200,23 +223,20 @@ async fn run_ffmpeg(
         .take()
         .expect("Process did not have a stdin");
 
-    let mut stdout = ffmpeg_child
-        .stdout
-        .take()
-        .expect("Process did not have a stdout");
-
     let stderr = ffmpeg_child
         .stderr
         .take()
         .expect("Process did not have a stderr");
     let mut stderr_reader = BufReader::new(stderr).lines();
 
+    // Task logging stderr from ffmpeg
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
             log::error!("Error when transforming song with ffmpeg: {line}");
         }
     });
 
+    // Task writing bytes from input pipe to ffmpeg stdin
     tokio::spawn(async move {
         let mut buffer = vec![0; 1024];
         loop {
@@ -229,8 +249,6 @@ async fn run_ffmpeg(
                 break;
             }
 
-            println!("Writing {bytes_read} to ffmpeg");
-
             stdin
                 .write_all(&buffer[..bytes_read])
                 .await
@@ -238,13 +256,24 @@ async fn run_ffmpeg(
         }
     });
 
-    let file_path = download_folder
-        .join(sanitize(song.title))
-        .with_extension(config.youtube_format.to_string());
-    log::debug!("Creating file on path {file_path:#?}");
-    let mut file = File::create(file_path).await?;
+    ffmpeg_child.wait().await?;
+    Ok(())
+}
 
-    write_to_file(&mut stdout, &mut file).await
+fn construct_audio_filter_complex(chapters: &[Chapter]) -> String {
+    let mut filter_complex = String::new();
+
+    for (i, chapter) in chapters.iter().enumerate() {
+        filter_complex.push_str(&format!(
+            "[0:a]atrim=start={}:end={}[a{}];",
+            chapter.start_time, chapter.end_time, i
+        ));
+    }
+
+    // Remove last semicolon
+    filter_complex.pop();
+    log::debug!("Audio filter is {filter_complex}");
+    filter_complex
 }
 
 async fn write_to_file(reader: &mut ChildStdout, file: &mut File) -> Result<()> {
@@ -256,8 +285,6 @@ async fn write_to_file(reader: &mut ChildStdout, file: &mut File) -> Result<()> 
         if bytes_read == 0 {
             return Ok(());
         }
-
-        println!("Writing {bytes_read} to file");
 
         file.write_all(&stdout_buffer[..bytes_read]).await?;
     }
@@ -288,17 +315,13 @@ mod tests {
 
         static VIDEO_ID: &str = "bbcPLei01Ls";
 
-        let album = SongAlbum {
-            title: String::from("title"),
-            cover_url: String::from("cover_url"),
-        };
-        let song = Song {
-            id: VIDEO_ID.to_string(),
-            title: String::from("title"),
-            album,
-            artist: String::from("artist"),
-            release_date: String::from("release_date"),
-        };
+        let song: Song = YoutubeDl::new(VIDEO_ID)
+            .run_async()
+            .await
+            .expect(&format!("Couldn't get info for video {VIDEO_ID}"))
+            .into_single_video()
+            .expect("Result is not a video")
+            .into();
 
         let download_request = DownloadRequest {
             item: Item::YoutubeVideo(song),
@@ -307,7 +330,7 @@ mod tests {
         let config = Config {
             download_folder: download_dir().expect("Didn't find a download directory"),
             youtube_format: YoutubeFormat::MP3,
-            youtube_split_chapters: false,
+            youtube_split_chapters: true,
             ..Default::default()
         };
         let request = YoutubeRequest(download_request, config);
