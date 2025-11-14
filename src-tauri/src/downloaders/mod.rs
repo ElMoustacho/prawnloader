@@ -4,8 +4,10 @@ use uuid::Uuid;
 
 use crate::models::music::Item;
 
+mod commands;
 pub mod deezer;
 pub mod youtube;
+mod ytdlp;
 
 pub type DeezerId = u64;
 pub type YoutubePlaylistId = String;

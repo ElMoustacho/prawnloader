@@ -22,6 +22,7 @@ use youtube_dl::{YoutubeDl, YoutubeDlOutput};
 
 use crate::{
     config::{Config, YoutubeFormat},
+    downloaders::commands::YtDlpCommandBuilder,
     models::music::{Album, Chapter, Item, Song},
 };
 
@@ -122,39 +123,41 @@ async fn download_song(request: YoutubeRequest, progress_tx: &Sender<ProgressEve
 
     log::debug!("Download folder is {download_folder:#?}");
 
-    let mut yt_dlp_child = Command::new("yt-dlp")
-        .args(vec![
-            "--extract-audio",
-            "--audio-format",
-            "opus",
-            "-o",
-            "-", // -o - allows for piping the output to our program
-            "--embed-metadata",
-            &song.id,
-        ])
-        .stderr(Stdio::null())
+    let mut yt_dlp_child = YtDlpCommandBuilder::new(&song, &config)
+        .command
+        .stderr(Stdio::piped())
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .spawn()
         .expect("Failed to start yt-dlp");
 
-    let mut stdout = yt_dlp_child
+    let stdout = yt_dlp_child
         .stdout
         .take()
-        .expect("Process did not have a stdout");
+        .expect("YtDlp process does not have a stdout.");
+    let mut stdout_reader = BufReader::new(stdout);
 
-    // If the desired format is WEBM (default for youtube) or we need to split chapters, run ffmpeg
-    if !matches!(config.youtube_format, YoutubeFormat::WEBM) || config.youtube_split_chapters {
-        run_ffmpeg(stdout, &config, download_folder, song).await
-    } else {
-        let file_path = download_folder
-            .join(sanitize(song.title))
-            .with_extension(config.youtube_format.to_string());
-        let mut file = File::create(file_path).await?;
+    let stderr = yt_dlp_child
+        .stderr
+        .take()
+        .expect("YtDlp process does not have a stderr.");
+    let mut stderr_reader = BufReader::new(stderr);
 
-        // TODO: Maybe remove write_to_file to write directly with yt-dlp ?
-        write_to_file(&mut stdout, &mut file).await
-    }
+    tokio::spawn(async move {
+        let mut buf = String::new();
+        while let Ok(text) = stdout_reader.read_line(&mut buf).await {
+            println!("{buf}");
+        }
+    });
+
+    tokio::spawn(async move {
+        let mut buf = String::new();
+        while let Ok(text) = stderr_reader.read_line(&mut buf).await {
+            println!("Error: {buf}");
+        }
+    });
+
+    Ok(())
 }
 
 async fn run_ffmpeg(
@@ -329,7 +332,7 @@ mod tests {
         };
         let config = Config {
             download_folder: download_dir().expect("Didn't find a download directory"),
-            youtube_format: YoutubeFormat::MP3,
+            youtube_format: YoutubeFormat::WEBM,
             youtube_split_chapters: true,
             ..Default::default()
         };
