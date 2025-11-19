@@ -35,10 +35,8 @@ sanitize-filename = "0.5.0"
 youtube_dl = { version = "0.10.0", features = ["tokio"] }
 env_logger = "0.11.8"
 log = "0.4.28"
-yt-dlp = { path = "D:\\Developpement\\Rust\\yt-dlp", features = ["tracing"] }
-# yt-dlp = { git = "https://github.com/ElMoustacho/yt-dlp", branch = "ffmpeg-fix", features = [
-# 	"tracing",
-# ] }
+yt-dlp = { version = "1.4.4", features = ["tracing"] }
+
 [dependencies.uuid]
 version = "1.10.0"
 features = [

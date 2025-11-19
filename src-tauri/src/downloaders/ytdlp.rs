@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use color_eyre::eyre::Result;
 use tauri::api::path::download_dir;
 use yt_dlp::{
-    fetcher::deps::{Libraries, LibraryInstaller},
+    client::deps::{Libraries, LibraryInstaller},
     Youtube,
 };
 
@@ -41,7 +41,6 @@ mod tests {
             .with_max_level(Level::DEBUG)
             .init();
 
-        let result = download().await;
-        tracing::info!("Finished test with result {result:#?}");
+        let result = download().await.unwrap();
     }
 }
